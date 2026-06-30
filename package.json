@@ -5,13 +5,13 @@
   "type": "module",
   "license": "MIT",
   "author": "",
-  "homepage": "https://github.com/your-name/vr-player#readme",
+  "homepage": "https://gitlab.vzan.com/front-end/vr-player",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-name/vr-player.git"
+    "url": "git+https://gitlab.vzan.com/front-end/vr-player.git"
   },
   "bugs": {
-    "url": "https://github.com/your-name/vr-player/issues"
+    "url": "https://gitlab.vzan.com/front-end/vr-player/issues"
   },
   "keywords": ["vr", "360", "panorama", "video", "webgl", "player"],
   "sideEffects": false,

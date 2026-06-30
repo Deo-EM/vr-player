@@ -30,8 +30,8 @@ export class Camera {
   /** 预分配的旋转矩阵，避免每帧 GC */
   private readonly rotation: Mat4 = new Float32Array(16);
 
-  /** FOV 变更回调 */
-  onFovChange?: (fov: number) => void;
+  /** FOV 变更回调集合（支持多订阅） */
+  private readonly fovChangeCallbacks = new Set<(fov: number) => void>();
 
   /**
    * 设置 yaw/pitch。
@@ -61,12 +61,25 @@ export class Camera {
     const clamped = Math.max(Camera.MIN_FOV, Math.min(Camera.MAX_FOV, fovDeg));
     if (this.fov === clamped) return;
     this.fov = clamped;
-    this.onFovChange?.(clamped);
+    for (const cb of this.fovChangeCallbacks) {
+      cb(clamped);
+    }
   }
 
   /** 获取当前 FOV（度） */
   getFov(): number {
     return this.fov;
+  }
+
+  /**
+   * 注册 FOV 变更回调，FOV 变化时触发。
+   * @returns 取消订阅函数，调用后移除该回调
+   */
+  onFovChange(cb: (fov: number) => void): () => void {
+    this.fovChangeCallbacks.add(cb);
+    return () => {
+      this.fovChangeCallbacks.delete(cb);
+    };
   }
 
   /**

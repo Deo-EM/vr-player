@@ -43,7 +43,6 @@ await player.load('/video/panorama.mp4');
 | ---------- | --------------- | ------- | -------------------------------------- |
 | `container`| `HTMLElement`   | -       | **必填。** canvas 的挂载容器           |
 | `fov`      | `number`        | `75`    | 视野角度（度），自动限制在 [30, 120] 范围 |
-| `autoPlay` | `boolean`       | `false` | `load()` 完成后自动播放                |
 | `muted`    | `boolean`       | `true`  | 静音播放（浏览器自动播放策略要求）       |
 | `loop`     | `boolean`       | `false` | 循环播放                               |
 
@@ -68,6 +67,18 @@ await player.load('/video/panorama.mp4');
 #### `player.getFov(): number`
 
 获取当前视野角度（度）。
+
+#### `player.onFovChange(cb: (fov: number) => void): () => void`
+
+注册 FOV 变更回调，当 FOV 因滚轮缩放或 `setFov()` 改变时触发。返回一个取消订阅函数，调用后移除该回调。
+
+```ts
+const unsubscribe = player.onFovChange((fov) => {
+  console.log('当前 FOV:', fov);
+});
+// 不再需要时取消订阅
+unsubscribe();
+```
 
 #### `player.destroy(): void`
 

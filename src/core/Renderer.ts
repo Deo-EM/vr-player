@@ -76,13 +76,20 @@ export class Renderer {
     this.program = this.createProgram(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
     gl.useProgram(this.program);
 
-    // 获取 locations
-    this.positionLoc = gl.getAttribLocation(this.program, 'aPosition');
-    this.uvLoc = gl.getAttribLocation(this.program, 'aUv');
+    // 获取 attribute locations（-1 表示未找到）
+    const positionLoc = gl.getAttribLocation(this.program, 'aPosition');
+    const uvLoc = gl.getAttribLocation(this.program, 'aUv');
+    if (positionLoc === -1 || uvLoc === -1) {
+      throw new Error('Renderer: missing required attribute location');
+    }
+    this.positionLoc = positionLoc;
+    this.uvLoc = uvLoc;
+
+    // 获取 uniform locations（null 表示未找到；注意 0 是合法的 location 值，不能用 falsy 判断）
     const projectionLoc = gl.getUniformLocation(this.program, 'uProjection');
     const viewLoc = gl.getUniformLocation(this.program, 'uView');
     const textureLoc = gl.getUniformLocation(this.program, 'uTexture');
-    if (!projectionLoc || !viewLoc || !textureLoc) {
+    if (projectionLoc === null || viewLoc === null || textureLoc === null) {
       throw new Error('Renderer: missing required uniform location');
     }
     this.projectionLoc = projectionLoc;

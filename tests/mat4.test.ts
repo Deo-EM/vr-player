@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { identity, multiply, perspective, rotationYawPitch } from '../src/math/mat4';
+import { identity, multiply, perspective, rotationYawPitch, transpose } from '../src/math/mat4';
 
 describe('mat4', () => {
   describe('identity', () => {
@@ -112,13 +112,3 @@ describe('mat4', () => {
     });
   });
 });
-
-/** 辅助：4x4 矩阵转置（列主序） */
-function transpose(out: Float32Array, m: Float32Array): Float32Array {
-  for (let i = 0; i < 4; i++) {
-    for (let j = 0; j < 4; j++) {
-      out[j * 4 + i] = m[i * 4 + j];
-    }
-  }
-  return out;
-}

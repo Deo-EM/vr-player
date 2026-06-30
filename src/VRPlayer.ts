@@ -39,7 +39,6 @@ export class VRPlayer {
     this.options = {
       container: options.container,
       fov: options.fov ?? 75,
-      autoPlay: options.autoPlay ?? false,
       muted: options.muted ?? true,
       loop: options.loop ?? false,
     };
@@ -74,10 +73,6 @@ export class VRPlayer {
 
     // 等待视频可播放
     await this.waitReady();
-
-    if (this.options.autoPlay) {
-      await this.play();
-    }
   }
 
   /** 等待 video 元素 readyState >= 2（HAVE_CURRENT_DATA），带 15s 超时 */
@@ -148,10 +143,11 @@ export class VRPlayer {
 
   /**
    * 注册 FOV 变更回调（滚轮、setFov、slider 等触发时调用）。
+   * @returns 取消订阅函数，调用后移除该回调
    */
-  onFovChange(cb: (fov: number) => void): void {
+  onFovChange(cb: (fov: number) => void): () => void {
     this.ensureAlive();
-    this.camera.onFovChange = cb;
+    return this.camera.onFovChange(cb);
   }
 
   /** 销毁播放器，释放全部资源 */

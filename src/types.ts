@@ -6,8 +6,6 @@ export interface VRPlayerOptions {
   container: HTMLElement;
   /** FOV 视野角度（度），默认 75，范围 [30, 120] */
   fov?: number;
-  /** 是否自动播放，默认 false */
-  autoPlay?: boolean;
   /** 是否静音，默认 true（浏览器自动播放策略要求） */
   muted?: boolean;
   /** 是否循环播放，默认 false */

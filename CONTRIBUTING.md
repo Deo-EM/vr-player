@@ -6,17 +6,17 @@ Thanks for your interest in contributing! This guide will help you get started.
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-name/vr-player.git
+git clone https://gitlab.vzan.com/front-end/vr-player.git
 cd vr-player
 
 # Install dependencies
-npm install
+pnpm install
 
 # Run tests in watch mode
-npm run test:watch
+pnpm test:watch
 
 # Lint & format
-npm run lint:fix
+pnpm run lint:fix
 ```
 
 ## Project Structure
@@ -44,7 +44,7 @@ demo/                   # Local debugging page
 ## Coding Standards
 
 - **TypeScript strict mode** — no `any`, no `// @ts-ignore`.
-- **Biome** — run `npm run lint:fix` before committing. The CI enforces `npm run lint`.
+- **Biome** — run `pnpm run lint:fix` before committing. The CI enforces `pnpm run lint`.
 - **No runtime dependencies** — keep the bundle lightweight. All math (mat4) is self-implemented.
 - **Pure functions for testable logic** — matrix ops, geometry generation, and camera clamping are all pure and unit-tested.
 
@@ -53,16 +53,16 @@ demo/                   # Local debugging page
 This project uses [Changesets](https://github.com/changesets/changesets) for versioning. Before submitting a PR that affects the published package, run:
 
 ```bash
-npm run changeset
+pnpm changeset
 ```
 
 Follow the prompts to describe the change (major/minor/patch). Commit the generated changeset file alongside your code changes.
 
 ## Pull Request Checklist
 
-- [ ] `npm run lint` passes
-- [ ] `npm test` passes
-- [ ] `npm run build` succeeds
+- [ ] `pnpm run lint` passes
+- [ ] `pnpm test` passes
+- [ ] `pnpm run build` succeeds
 - [ ] Added a changeset (if the change affects the published API)
 - [ ] Updated README if API changed
 

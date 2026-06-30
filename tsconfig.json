@@ -15,7 +15,7 @@
     "skipLibCheck": true,
     "declaration": true,
     "declarationDir": "./dist",
-    "emitDeclarationOnly": false,
+    "emitDeclarationOnly": true,
     "outDir": "./dist",
     "rootDir": "./src",
     "isolatedModules": true,

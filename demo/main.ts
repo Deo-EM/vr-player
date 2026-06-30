@@ -12,7 +12,6 @@ const fovValue = document.getElementById('fovValue') as HTMLSpanElement;
 const player = new VRPlayer({
   container,
   fov: 75,
-  autoPlay: true,
   muted: false,
   loop: true,
 });
@@ -34,6 +33,7 @@ loadBtn.addEventListener('click', async () => {
   }
   try {
     await player.load(src);
+    await player.play();
     console.log('视频加载完成');
   } catch (e) {
     console.error('加载失败:', e);
