@@ -110,8 +110,8 @@ export class DragController {
     e.preventDefault();
     const delta = e.deltaY * this.wheelSensitivity;
     // 上滚（deltaY < 0）→ FOV 增大；下滚（deltaY > 0）→ FOV 减小
-    const newFov = Math.max(30, Math.min(120, this.camera.getFov() - delta));
-    this.camera.setFov(newFov);
+    // 钳制由 Camera.setFov 内部处理
+    this.camera.setFov(this.camera.getFov() - delta);
   }
 
   /** 解绑所有事件，释放资源 */

@@ -1,4 +1,9 @@
-import type { Mat4 } from '../math/mat4';
+import {
+  type Mat4,
+  perspective as mat4Perspective,
+  rotationYawPitch,
+  transpose,
+} from '../math/mat4';
 
 /**
  * 相机：管理 yaw/pitch/fov，计算视图与投影矩阵。
@@ -72,9 +77,9 @@ export class Camera {
    * @param out 预分配的 Float32Array(16)
    */
   getViewMatrix(out: Mat4): void {
-    rotationYawPitchTransposed(this.rotation, this.yaw, this.pitch);
+    rotationYawPitch(this.rotation, this.yaw, this.pitch);
     // 转置后的旋转矩阵即逆矩阵，作为 view 矩阵
-    out.set(this.rotation);
+    transpose(out, this.rotation);
   }
 
   /**
@@ -85,56 +90,6 @@ export class Camera {
    */
   getProjectionMatrix(aspect: number, out: Mat4): void {
     const fovRad = (this.fov * Math.PI) / 180;
-    perspective(out, fovRad, aspect, 0.1, 100);
+    mat4Perspective(out, fovRad, aspect, 0.1, 100);
   }
-}
-
-// 以下为内联优化函数，避免引入 mat4 模块的循环依赖且保持 Camera 自洽
-function rotationYawPitchTransposed(out: Mat4, yaw: number, pitch: number): void {
-  const cy = Math.cos(yaw);
-  const sy = Math.sin(yaw);
-  const cp = Math.cos(pitch);
-  const sp = Math.sin(pitch);
-
-  // rotationYawPitch 矩阵（列主序）后转置：
-  // 原矩阵列序: [cy,0,-sy,0,  sp*sy,cp,sp*cy,0,  cp*sy,-sp,cp*cy,0,  0,0,0,1]
-  // 转置后按列序写入：
-  out[0] = cy;
-  out[1] = sp * sy;
-  out[2] = cp * sy;
-  out[3] = 0;
-  out[4] = 0;
-  out[5] = cp;
-  out[6] = -sp;
-  out[7] = 0;
-  out[8] = -sy;
-  out[9] = sp * cy;
-  out[10] = cp * cy;
-  out[11] = 0;
-  out[12] = 0;
-  out[13] = 0;
-  out[14] = 0;
-  out[15] = 1;
-}
-
-// 内联 perspective 以避免运行时循环依赖；与 mat4.perspective 行为一致
-function perspective(out: Mat4, fovRad: number, aspect: number, near: number, far: number): void {
-  const f = 1.0 / Math.tan(fovRad / 2);
-  const nf = 1 / (near - far);
-  out[0] = f / aspect;
-  out[1] = 0;
-  out[2] = 0;
-  out[3] = 0;
-  out[4] = 0;
-  out[5] = f;
-  out[6] = 0;
-  out[7] = 0;
-  out[8] = 0;
-  out[9] = 0;
-  out[10] = (far + near) * nf;
-  out[11] = -1;
-  out[12] = 0;
-  out[13] = 0;
-  out[14] = 2 * far * near * nf;
-  out[15] = 0;
 }

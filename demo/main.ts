@@ -26,7 +26,6 @@ player.onFovChange((fov) => {
 // 调试时暴露 player 到全局，方便控制台查看
 (window as unknown as { player: typeof player }).player = player;
 
-
 loadBtn.addEventListener('click', async () => {
   const src = srcInput.value.trim();
   if (!src) {

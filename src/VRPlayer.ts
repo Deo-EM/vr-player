@@ -80,7 +80,7 @@ export class VRPlayer {
     }
   }
 
-  /** 等待 video 元素 readyState >= 2（HAVE_CURRENT_DATA） */
+  /** 等待 video 元素 readyState >= 2（HAVE_CURRENT_DATA），带 15s 超时 */
   private waitReady(): Promise<void> {
     return new Promise((resolve, reject) => {
       const video = this.videoTexture.video;
@@ -88,6 +88,12 @@ export class VRPlayer {
         resolve();
         return;
       }
+
+      const timeoutId = window.setTimeout(() => {
+        cleanup();
+        reject(new Error(`VRPlayer: video load timed out (15s) for "${video.src}"`));
+      }, 15_000);
+
       const onLoadedData = () => {
         cleanup();
         resolve();
@@ -97,6 +103,7 @@ export class VRPlayer {
         reject(new Error(`VRPlayer: failed to load video source "${video.src}"`));
       };
       const cleanup = () => {
+        window.clearTimeout(timeoutId);
         video.removeEventListener('loadeddata', onLoadedData);
         video.removeEventListener('error', onError);
       };

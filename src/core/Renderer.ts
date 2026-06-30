@@ -46,15 +46,12 @@ export class Renderer {
   private running = false;
   /** ResizeObserver */
   private resizeObserver: ResizeObserver | null = null;
-  /** 容器元素 */
-  private container: HTMLElement;
 
   /**
    * @param container 挂载容器，canvas 将插入其中
    * @param camera    相机实例
    */
   constructor(container: HTMLElement, camera: Camera) {
-    this.container = container;
     this.camera = camera;
 
     // 创建 canvas
@@ -151,9 +148,11 @@ export class Renderer {
 
   /** 调整 canvas 与 viewport 尺寸 */
   resize(): void {
+    const container = this.canvas.parentElement;
+    if (!container) return;
     const dpr = window.devicePixelRatio || 1;
-    const width = this.container.clientWidth;
-    const height = this.container.clientHeight;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
     this.canvas.width = Math.max(1, Math.floor(width * dpr));
     this.canvas.height = Math.max(1, Math.floor(height * dpr));
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);

@@ -23,6 +23,14 @@ export class SphereGeometry {
    * @param heightSegments 纬度细分（横向切片数），默认 32
    */
   constructor(gl: WebGLRenderingContext, radius = 50, widthSegments = 64, heightSegments = 32) {
+    // 预校验顶点数，避免分配 buffer 后才 throw 浪费 GL 资源
+    const vertexCount = (widthSegments + 1) * (heightSegments + 1);
+    if (vertexCount > 65535) {
+      throw new Error(
+        `SphereGeometry: vertex count ${vertexCount} exceeds Uint16 index limit (65535). Reduce segments.`,
+      );
+    }
+
     const positions: number[] = [];
     const uvs: number[] = [];
     const indices: number[] = [];
@@ -71,14 +79,6 @@ export class SphereGeometry {
     this.positionBuffer = createBuffer(gl, new Float32Array(positions));
     this.uvBuffer = createBuffer(gl, new Float32Array(uvs));
     this.indexBuffer = createIndexBuffer(gl, new Uint16Array(indices));
-
-    // 验证顶点数量不超过 Uint16 索引上限
-    const vertexCount = (widthSegments + 1) * (heightSegments + 1);
-    if (vertexCount > 65535) {
-      throw new Error(
-        `SphereGeometry: vertex count ${vertexCount} exceeds Uint16 index limit (65535). Reduce segments.`,
-      );
-    }
   }
 
   /**

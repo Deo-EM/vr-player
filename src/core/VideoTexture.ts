@@ -47,8 +47,9 @@ export class VideoTexture {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
     // 检测 API 支持
-    this.supportsVFC = typeof HTMLVideoElement !== 'undefined'
-      && 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+    this.supportsVFC =
+      typeof HTMLVideoElement !== 'undefined' &&
+      'requestVideoFrameCallback' in HTMLVideoElement.prototype;
 
     if (this.supportsVFC) {
       this.scheduleVFC();
@@ -57,15 +58,28 @@ export class VideoTexture {
 
   /** 注册 requestVideoFrameCallback：每次解码出新帧时标记待上传 */
   private scheduleVFC(): void {
+    // 先取消旧回调（换源时调用，避免泄漏）
+    this.cancelVFC();
+
     const cb = /* @__PURE__ */ () => {
       this.pendingFrame = true;
       this.vfcId = (
-        this.video as { requestVideoFrameCallback(fn: () => void): number; }
+        this.video as { requestVideoFrameCallback(fn: () => void): number }
       ).requestVideoFrameCallback(cb);
     };
     this.vfcId = (
-      this.video as { requestVideoFrameCallback(fn: () => void): number; }
+      this.video as { requestVideoFrameCallback(fn: () => void): number }
     ).requestVideoFrameCallback(cb);
+  }
+
+  /** 取消当前注册的 VFC 回调 */
+  private cancelVFC(): void {
+    if (this.vfcId !== null) {
+      (this.video as { cancelVideoFrameCallback(id: number): void }).cancelVideoFrameCallback(
+        this.vfcId,
+      );
+      this.vfcId = null;
+    }
   }
 
   /**
@@ -82,6 +96,10 @@ export class VideoTexture {
     this.lastUploadedTime = -1;
     this.textureInitialized = false;
     this.pendingFrame = false;
+    // 重新注册 VFC，确保新视频源能精确检测新帧
+    if (this.supportsVFC) {
+      this.scheduleVFC();
+    }
   }
 
   /**
@@ -151,14 +169,14 @@ export class VideoTexture {
       }
 
       return false;
-    } else {
-      // 不支持 VFC：纯 dirty check
-      if (Math.abs(v.currentTime - this.lastUploadedTime) > 0.05) {
-        this.lastUploadedTime = v.currentTime;
-        return true;
-      }
-      return false;
     }
+
+    // 不支持 VFC：纯 dirty check
+    if (Math.abs(v.currentTime - this.lastUploadedTime) > 0.05) {
+      this.lastUploadedTime = v.currentTime;
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -186,12 +204,7 @@ export class VideoTexture {
 
   /** 释放全部资源 */
   dispose(gl: WebGLRenderingContext): void {
-    if (this.vfcId !== null) {
-      (
-        this.video as { cancelVideoFrameCallback(id: number): void; }
-      ).cancelVideoFrameCallback(this.vfcId);
-      this.vfcId = null;
-    }
+    this.cancelVFC();
     gl.deleteTexture(this.texture);
     this.video.pause();
     this.video.removeAttribute('src');
