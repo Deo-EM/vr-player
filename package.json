@@ -1,0 +1,63 @@
+{
+  "name": "vr-player",
+  "version": "0.1.0",
+  "description": "A lightweight 360° panoramic video VR player built with pure WebGL. Zero runtime dependencies.",
+  "type": "module",
+  "license": "MIT",
+  "author": "",
+  "homepage": "https://github.com/your-name/vr-player#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-name/vr-player.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-name/vr-player/issues"
+  },
+  "keywords": [
+    "vr",
+    "360",
+    "panorama",
+    "video",
+    "webgl",
+    "player"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "rolldown -c rolldown.config.ts --watch",
+    "build": "rolldown -c rolldown.config.ts && tsc --emitDeclarationOnly",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "demo": "vite demo",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish",
+    "ci": "biome check . && vitest run && rolldown -c rolldown.config.ts"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@changesets/cli": "^2.27.9",
+    "rolldown": "^1.0.0-beta.1",
+    "typescript": "^5.7.0",
+    "vite": "^8.1.1",
+    "vitest": "^2.1.0"
+  }
+}
