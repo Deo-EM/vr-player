@@ -1,5 +1,6 @@
 import { Camera } from './core/Camera';
 import { DragController } from './core/DragController';
+import { GyroscopeController } from './core/GyroscopeController';
 import { Renderer } from './core/Renderer';
 import { VideoTexture } from './core/VideoTexture';
 import type { VRPlayerOptions } from './types';
@@ -31,6 +32,8 @@ export class VRPlayer {
   private renderer: Renderer;
   /** 拖动控制器 */
   private dragController: DragController;
+  /** 陀螺仪控制器 */
+  private gyroController: GyroscopeController;
   /** 是否已销毁 */
   private destroyed = false;
 
@@ -43,6 +46,7 @@ export class VRPlayer {
       loop: options.loop ?? false,
       webgl: options.webgl ?? 1,
       renderScale: options.renderScale ?? 1,
+      gyroscope: options.gyroscope ?? false,
     };
 
     // 初始化各模块（顺序很重要）
@@ -65,6 +69,19 @@ export class VRPlayer {
 
     // 拖动控制器
     this.dragController = new DragController(this.renderer.canvas, this.camera);
+
+    // 陀螺仪控制器（与拖动控制器共存，均通过增量叠加修改 Camera）
+    this.gyroController = new GyroscopeController(this.camera);
+    if (this.options.gyroscope) {
+      // 异步尝试开启；iOS 13+ 在无用户手势时会失败，仅 warn 不影响其他功能
+      this.gyroController.enable().then((ok) => {
+        if (!ok) {
+          console.warn(
+            '[VRPlayer] Gyroscope failed to enable on construction. Call setGyroscope(true) within a user gesture on iOS.',
+          );
+        }
+      });
+    }
 
     // 启动渲染循环
     this.renderer.start();
@@ -192,12 +209,41 @@ export class VRPlayer {
     return this.renderer.webglVersion;
   }
 
+  /**
+   * 开启或关闭陀螺仪视角控制。
+   *
+   * 移动设备转动时视角同步旋转，与拖动控制器共存叠加。
+   *
+   * **iOS 13+ 注意**：必须在用户手势（如按钮点击）内调用 `enabled=true`
+   * 以通过 `requestPermission()` 权限请求；在非手势上下文中调用将返回 `false`。
+   *
+   * @param enabled true 开启，false 关闭
+   * @returns 开启时返回是否成功（不支持或权限被拒返回 false）；关闭时返回 true
+   */
+  async setGyroscope(enabled: boolean): Promise<boolean> {
+    this.ensureAlive();
+    if (enabled) {
+      return this.gyroController.enable();
+    }
+    this.gyroController.disable();
+    return true;
+  }
+
+  /**
+   * 查询陀螺仪视角控制是否已开启。
+   */
+  isGyroscopeEnabled(): boolean {
+    this.ensureAlive();
+    return this.gyroController.isEnabled();
+  }
+
   /** 销毁播放器，释放全部资源 */
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
 
     this.dragController.dispose();
+    this.gyroController.dispose();
     this.videoTexture.dispose(this.renderer.gl);
     this.renderer.dispose();
   }

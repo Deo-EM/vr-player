@@ -1,5 +1,4 @@
 # VR Player
-# https://vjs.zencdn.net/v/oceans.mp4
 
 一个轻量级的 360° 全景视频 VR 播放器，基于纯 WebGL 实现，零运行时依赖。
 
@@ -7,6 +6,7 @@
 
 - 🎥 支持 360° 全景视频播放（等距柱状投影）
 - 🖱️ 拖动旋转视角（水平/垂直），垂直视角限制在 ±85°；移动端支持双指 pinch 缩放
+- 📱 支持陀螺仪视角控制，转动设备同步旋转视角，可随时开关，与拖动共存
 - 🔭 可配置 FOV 视野角度，范围 [30°, 120°]
 - 🎛️ 支持 WebGL 1.0 / 2.0 双版本，按需切换（2.0 启用 mipmap 三线性过滤，清晰度更高）
 - 🔍 **极致清晰度优化**：各向异性过滤、highp 着色器精度、高细分球体、超采样（renderScale）
@@ -51,6 +51,7 @@ await player.load('/video/panorama.mp4');
 | `loop`     | `boolean`       | `false` | 循环播放                               |
 | `webgl`    | `1 \| 2`        | `1`     | WebGL 版本。`1` 兼容性最广；`2` 启用 mipmap 三线性过滤、高细分球体、highp 精度，清晰度更高。若 `2` 不可用自动降级到 `1` |
 | `renderScale` | `number`     | `1`     | 渲染缩放倍数（相对于 devicePixelRatio）。`> 1` 为超采样（SSAA），提升清晰度但增加 GPU 开销；`< 1` 为降采样。钳制到 [0.25, 4] |
+| `gyroscope` | `boolean`      | `false` | 是否构造后启用陀螺仪视角控制。iOS 13+ 因权限策略，建议改为在用户手势中调用 `setGyroscope(true)` |
 
 ### 方法
 
@@ -132,6 +133,34 @@ if (version === 1) {
 player.setRenderScale(2);
 ```
 
+#### `player.setGyroscope(enabled: boolean): Promise<boolean>`
+
+开启或关闭陀螺仪视角控制。移动设备转动时视角同步旋转，与拖动控制器共存叠加，互不干扰。
+
+- 开启时返回是否成功（设备不支持或权限被拒绝返回 `false`）
+- 关闭时返回 `true`
+
+> **iOS 13+ 注意**：必须在用户手势（如按钮点击）内调用 `enabled=true` 以通过 `requestPermission()` 权限请求；在非手势上下文中调用将返回 `false`。
+
+```ts
+const btn = document.getElementById('gyro-toggle')!;
+btn.addEventListener('click', async () => {
+  const target = !player.isGyroscopeEnabled();
+  const ok = await player.setGyroscope(target);
+  if (target && !ok) {
+    console.warn('陀螺仪开启失败（设备不支持或权限被拒绝）');
+  }
+});
+```
+
+#### `player.isGyroscopeEnabled(): boolean`
+
+查询陀螺仪视角控制是否已开启。
+
+```ts
+console.log(player.isGyroscopeEnabled()); // true / false
+```
+
 #### `player.destroy(): void`
 
 销毁播放器，释放所有资源（WebGL 上下文、事件监听、video 元素、canvas）。调用后实例不再可用。
@@ -143,7 +172,7 @@ player.setRenderScale(2);
 - **球体几何**：程序化生成（WebGL1 200×100 / WebGL2 512×256 分段，WebGL2 使用 Uint32 索引突破 65535 顶点限制），UV 翻转使纹理朝向内部。高细分度减少 UV 仿射插值与透视映射的误差，降低视角旋转时的纹理游走。
 - **视频纹理**：首帧通过 `texImage2D` 上传，后续帧通过 `texSubImage2D` 更新，以 `video.currentTime` + `requestVideoFrameCallback` 双重检测避免重复上传。WebGL 2.0 下额外启用 mipmap + 三线性过滤（`LINEAR_MIPMAP_LINEAR`）。
 - **相机**：Y 轴（yaw）+ X 轴（pitch）欧拉角控制，pitch 限制在 ±85° 防止翻转。
-- **交互**：Pointer Events 统一鼠标与触摸操作，通过 pointer capture 支持拖出元素仍可响应；移动端双指 pinch 缩放 FOV。
+- **交互**：Pointer Events 统一鼠标与触摸操作，通过 pointer capture 支持拖出元素仍可响应；移动端双指 pinch 缩放 FOV；陀螺仪（DeviceOrientation）以增量叠加方式修改视角，与拖动共存。
 - **WebGL 版本**：默认使用 WebGL 1.0（兼容性最广）；配置 `webgl: 2` 时启用 WebGL 2.0，支持 NPOT 纹理 mipmap 与三线性过滤，清晰度显著提升。若浏览器不支持 2.0 则自动降级。
 
 ## 清晰度优化

@@ -28,3 +28,10 @@ coverage/
 .changeset/*.md
 !.changeset/config.json
 !.changeset/README.md
+
+# SSL certs (self-signed for local dev)
+scripts/*.pem
+scripts/*-key.pem
+
+# Husky internals (auto-generated)
+.husky/_/

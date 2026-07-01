@@ -1,5 +1,11 @@
 import { VRPlayer } from '../src/index';
 
+// 接入 vConsole，方便手机端排查问题（console/network/存储等）
+const VConsoleCtor = (window as unknown as { VConsole?: new () => undefined }).VConsole;
+if (VConsoleCtor) {
+  new VConsoleCtor();
+}
+
 const playerEl = document.getElementById('player');
 if (!playerEl) throw new Error('demo: #player element not found');
 const container: HTMLElement = playerEl;
@@ -7,6 +13,7 @@ const srcInput = document.getElementById('src') as HTMLInputElement;
 const loadBtn = document.getElementById('load') as HTMLButtonElement;
 const playBtn = document.getElementById('play') as HTMLButtonElement;
 const pauseBtn = document.getElementById('pause') as HTMLButtonElement;
+const gyroBtn = document.getElementById('gyro') as HTMLButtonElement;
 const fovSlider = document.getElementById('fov') as HTMLInputElement;
 const fovValue = document.getElementById('fovValue') as HTMLSpanElement;
 const webglSelect = document.getElementById('webgl') as HTMLSelectElement;
@@ -67,6 +74,18 @@ playBtn.addEventListener('click', async () => {
 
 pauseBtn.addEventListener('click', () => {
   player.pause();
+});
+
+// 陀螺仪开关：需在用户手势内调用以通过 iOS 13+ 权限请求
+gyroBtn.addEventListener('click', async () => {
+  const target = !player.isGyroscopeEnabled();
+  const ok = await player.setGyroscope(target);
+  if (target && !ok) {
+    alert('陀螺仪开启失败（设备不支持或权限被拒绝）');
+    gyroBtn.textContent = '陀螺仪: 关';
+    return;
+  }
+  gyroBtn.textContent = `陀螺仪: ${player.isGyroscopeEnabled() ? '开' : '关'}`;
 });
 
 fovSlider.addEventListener('input', () => {

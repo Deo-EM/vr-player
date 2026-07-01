@@ -27,4 +27,14 @@ export interface VRPlayerOptions {
    * - `< 1.0`：降采样，牺牲清晰度换取性能
    */
   renderScale?: number;
+  /**
+   * 是否在构造后启用陀螺仪控制视角，默认 false。
+   *
+   * - 开启后，移动设备转动时视角同步旋转，实现沉浸式全景浏览
+   * - 与拖动控制器共存叠加，互不干扰
+   * - iOS 13+ 由于权限策略，构造时若 `true` 但无用户手势可能开启失败（仅 warn），
+   *   建议改为在用户手势（如按钮点击）中调用 `player.setGyroscope(true)`
+   * - 不支持传感器或未授权时不影响其他功能
+   */
+  gyroscope?: boolean;
 }
