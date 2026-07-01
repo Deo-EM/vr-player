@@ -6,21 +6,27 @@ if (VConsoleCtor) {
   new VConsoleCtor();
 }
 
-const playerEl = document.getElementById('player');
-if (!playerEl) throw new Error('demo: #player element not found');
-const container: HTMLElement = playerEl;
-const srcInput = document.getElementById('src') as HTMLInputElement;
-const loadBtn = document.getElementById('load') as HTMLButtonElement;
-const playBtn = document.getElementById('play') as HTMLButtonElement;
-const pauseBtn = document.getElementById('pause') as HTMLButtonElement;
-const gyroBtn = document.getElementById('gyro') as HTMLButtonElement;
-const fovSlider = document.getElementById('fov') as HTMLInputElement;
-const fovValue = document.getElementById('fovValue') as HTMLSpanElement;
-const webglSelect = document.getElementById('webgl') as HTMLSelectElement;
-const renderScaleSlider = document.getElementById('renderScale') as HTMLInputElement;
-const renderScaleValue = document.getElementById('renderScaleValue') as HTMLSpanElement;
-const seekSlider = document.getElementById('seek') as HTMLInputElement;
-const timeLabel = document.getElementById('time') as HTMLSpanElement;
+/** 按 id + 标签名获取元素并断言类型，缺失或标签不符时抛错 */
+function $<K extends keyof HTMLElementTagNameMap>(id: string, tag: K): HTMLElementTagNameMap[K] {
+  const el = document.getElementById(id);
+  if (!el || el.tagName.toLowerCase() !== tag)
+    throw new Error(`demo: expected <${tag} id="${id}">`);
+  return el as HTMLElementTagNameMap[K];
+}
+
+const container = $('player', 'div');
+const srcInput = $('src', 'input');
+const loadBtn = $('load', 'button');
+const playBtn = $('play', 'button');
+const pauseBtn = $('pause', 'button');
+const gyroBtn = $('gyro', 'button');
+const fovSlider = $('fov', 'input');
+const fovValue = $('fovValue', 'span');
+const webglSelect = $('webgl', 'select');
+const renderScaleSlider = $('renderScale', 'input');
+const renderScaleValue = $('renderScaleValue', 'span');
+const seekSlider = $('seek', 'input');
+const timeLabel = $('time', 'span');
 
 let player: VRPlayer;
 let currentSrc = '';
