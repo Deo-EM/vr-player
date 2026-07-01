@@ -43,7 +43,7 @@ function createPlayer(webglVersion: 1 | 2): void {
   const renderScale = Number.parseFloat(renderScaleSlider.value);
   player = new VRPlayer({
     container,
-    fov: 120,
+    fov: 75,
     muted: false,
     loop: true,
     webgl: webglVersion,
