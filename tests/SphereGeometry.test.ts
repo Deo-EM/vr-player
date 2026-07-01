@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { GLContext } from '../src/core/Renderer';
 import { SphereGeometry } from '../src/core/SphereGeometry';
 
 /**
@@ -56,6 +57,21 @@ describe('SphereGeometry 数据生成', () => {
     // 300x300 -> (301)*(301) = 90601 > 65535
     expect(() => new SphereGeometry(gl, 50, 300, 300)).toThrow(/exceeds Uint16/);
   });
+
+  it('启用 Uint32 索引时突破 65535 限制不抛错', () => {
+    const gl = createMockGL();
+    // 512x256 -> 513*257 = 131841 > 65535，Uint32 模式下应正常创建
+    const geo = new SphereGeometry(gl, 50, 512, 256, true);
+    const expectedIndices = 512 * 256 * 6;
+    expect(geo.indexCount).toBe(expectedIndices);
+    // UNSIGNED_INT 是 WebGL2 独有常量，通过 mock 断言获取
+    const mock = gl as unknown as MockGL;
+    expect(geo.indexType).toBe(mock.UNSIGNED_INT);
+    // 验证索引 buffer 确实是 Uint32Array
+    const idxData = getBuffer(gl, geo.indexBuffer);
+    expect(idxData).toBeInstanceOf(Uint32Array);
+    expect(idxData.length).toBe(expectedIndices);
+  });
 });
 
 // ---- Mock 工具 ----
@@ -65,7 +81,7 @@ describe('SphereGeometry 数据生成', () => {
  * 关键：跟踪 bindBuffer 设置的"当前 buffer"，bufferData 时将数据写入该 buffer。
  */
 class MockGL {
-  buffers = new Map<WebGLBuffer, Float32Array | Uint16Array>();
+  buffers = new Map<WebGLBuffer, Float32Array | Uint16Array | Uint32Array>();
   private currentBuffer: WebGLBuffer | null = null;
   private bufId = 0;
 
@@ -80,6 +96,7 @@ class MockGL {
   readonly FRAGMENT_SHADER = 0x8b30;
   readonly FLOAT = 0x1406;
   readonly UNSIGNED_SHORT = 0x1403;
+  readonly UNSIGNED_INT = 0x1405;
   readonly TRIANGLES = 0x0004;
   readonly DEPTH_TEST = 0x0b71;
   readonly CULL_FACE = 0x0b44;
@@ -132,7 +149,7 @@ class MockGL {
   bindBuffer(_target: number, buffer: WebGLBuffer): void {
     this.currentBuffer = buffer;
   }
-  bufferData(_target: number, data: Float32Array | Uint16Array): void {
+  bufferData(_target: number, data: Float32Array | Uint16Array | Uint32Array): void {
     if (this.currentBuffer) {
       this.buffers.set(this.currentBuffer, data);
     }
@@ -155,13 +172,17 @@ class MockGL {
   drawElements(): void {}
 }
 
-function createMockGL(): MockGL {
-  return new MockGL();
+function createMockGL(): GLContext {
+  return new MockGL() as unknown as GLContext;
 }
 
 /** 从 mock GL 获取 buffer 数据，缺失则抛错（替代非空断言） */
-function getBuffer(gl: MockGL, buffer: WebGLBuffer): Float32Array | Uint16Array {
-  const data = gl.buffers.get(buffer);
+function getBuffer(
+  gl: GLContext,
+  buffer: WebGLBuffer,
+): Float32Array | Uint16Array | Uint32Array {
+  const mock = gl as unknown as MockGL;
+  const data = mock.buffers.get(buffer);
   if (!data) {
     throw new Error('test: buffer data not found in mock GL');
   }

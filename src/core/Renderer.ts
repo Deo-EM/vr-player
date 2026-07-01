@@ -45,6 +45,9 @@ export class Renderer {
   private readonly viewMatrix: Mat4 = new Float32Array(16);
   private readonly projectionMatrix: Mat4 = new Float32Array(16);
 
+  /** 渲染缩放倍数（相对于 devicePixelRatio），> 1 为超采样 */
+  private renderScale: number;
+
   /** RAF id */
   private rafId = 0;
   /** 是否正在渲染 */
@@ -56,9 +59,11 @@ export class Renderer {
    * @param container     挂载容器，canvas 将插入其中
    * @param camera        相机实例
    * @param webglVersion  请求的 WebGL 版本，默认 1；若请求 2 但不支持则自动降级到 1
+   * @param renderScale   渲染缩放倍数（相对于 DPR），默认 1.0，> 1 为超采样提升清晰度
    */
-  constructor(container: HTMLElement, camera: Camera, webglVersion: 1 | 2 = 1) {
+  constructor(container: HTMLElement, camera: Camera, webglVersion: 1 | 2 = 1, renderScale = 1) {
     this.camera = camera;
+    this.renderScale = Math.max(0.25, renderScale);
 
     // 创建 canvas
     this.canvas = document.createElement('canvas');
@@ -72,9 +77,11 @@ export class Renderer {
     this.gl = gl;
     this.webglVersion = version;
 
-    // 根据版本选择对应 Shader 源码
+    // 根据版本选择对应 Shader 源码，并按设备能力升级片段着色器精度
+    const precision = this.getMaxFragmentPrecision();
+    const fsBase = version === 2 ? FRAGMENT_SHADER_SOURCE_300 : FRAGMENT_SHADER_SOURCE;
+    const fsSource = fsBase.replace('precision mediump float;', `precision ${precision} float;`);
     const vsSource = version === 2 ? VERTEX_SHADER_SOURCE_300 : VERTEX_SHADER_SOURCE;
-    const fsSource = version === 2 ? FRAGMENT_SHADER_SOURCE_300 : FRAGMENT_SHADER_SOURCE;
 
     // 编译 shader program
     this.program = this.createProgram(vsSource, fsSource);
@@ -100,8 +107,13 @@ export class Renderer {
     this.viewLoc = viewLoc;
     this.textureLoc = textureLoc;
 
-    // 创建球体几何
-    this.geometry = new SphereGeometry(gl);
+    // 创建球体几何：WebGL2 使用更高细分度 + Uint32 索引以减少 UV 仿射插值误差
+    if (version === 2) {
+      // 512x256 细分，配合 Uint32 索引突破 65535 顶点限制
+      this.geometry = new SphereGeometry(gl, 50, 512, 256, true);
+    } else {
+      this.geometry = new SphereGeometry(gl, 50, 200, 100, false);
+    }
 
     // 启用深度测试与背面剔除（剔除球体外表面，因相机在内侧观察）
     gl.enable(gl.DEPTH_TEST);
@@ -148,6 +160,20 @@ export class Renderer {
     return { gl: gl1, version: 1 };
   }
 
+  /**
+   * 检测片段着色器可用的最高浮点精度。
+   * - WebGL2：highp 是核心保证，始终可用
+   * - WebGL1：需通过 getShaderPrecisionFormat 检测，不支持则回退 mediump
+   *
+   * highp（fp32）可消除 mediump（fp16）在渐变色区域产生的色带，提升画质。
+   */
+  private getMaxFragmentPrecision(): 'highp' | 'mediump' {
+    const gl = this.gl;
+    if (this.webglVersion === 2) return 'highp';
+    const fmt = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
+    return fmt && fmt.precision > 0 ? 'highp' : 'mediump';
+  }
+
   /** 编译单个 shader */
   private compileShader(type: number, source: string): WebGLShader {
     const gl = this.gl;
@@ -187,21 +213,31 @@ export class Renderer {
     return program;
   }
 
-  /** 调整 canvas 与 viewport 尺寸 */
+  /** 调整 canvas 与 viewport 尺寸（按 renderScale × DPR 超采样） */
   resize(): void {
     const container = this.canvas.parentElement;
     if (!container) return;
     const dpr = window.devicePixelRatio || 1;
+    const scale = this.renderScale * dpr;
     const width = container.clientWidth;
     const height = container.clientHeight;
-    this.canvas.width = Math.max(1, Math.floor(width * dpr));
-    this.canvas.height = Math.max(1, Math.floor(height * dpr));
+    this.canvas.width = Math.max(1, Math.floor(width * scale));
+    this.canvas.height = Math.max(1, Math.floor(height * scale));
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
   }
 
   /** 注入视频纹理 */
   setVideoTexture(texture: VideoTexture): void {
     this.videoTexture = texture;
+  }
+
+  /**
+   * 动态调整渲染缩放倍数，立即触发 resize 重新计算 canvas 分辨率。
+   * @param scale 缩放倍数，钳制到 [0.25, 4]，> 1 为超采样
+   */
+  setRenderScale(scale: number): void {
+    this.renderScale = Math.max(0.25, Math.min(4, scale));
+    this.resize();
   }
 
   /** 启动渲染循环 */

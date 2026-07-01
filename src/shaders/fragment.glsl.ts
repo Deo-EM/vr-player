@@ -2,7 +2,8 @@
  * 片段着色器源码。
  *
  * 采样视频纹理，按插值后的 UV 输出颜色。
- * precision mediump float 兼顾质量与性能。
+ * 默认 precision mediump float 作为安全基线，Renderer 会在设备支持时
+ * 动态替换为 highp 以消除色带、提升精度。
  */
 
 /** WebGL 1.0（GLSL ES 1.00） */

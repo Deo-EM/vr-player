@@ -42,6 +42,7 @@ export class VRPlayer {
       muted: options.muted ?? true,
       loop: options.loop ?? false,
       webgl: options.webgl ?? 1,
+      renderScale: options.renderScale ?? 1,
     };
 
     // 初始化各模块（顺序很重要）
@@ -50,7 +51,12 @@ export class VRPlayer {
 
     // 先创建 Renderer（含 GL 上下文），再用 GL 上下文创建 VideoTexture。
     // 解决 VideoTexture 依赖 GL 上下文、Renderer 依赖 VideoTexture 的循环依赖。
-    this.renderer = new Renderer(this.options.container, this.camera, this.options.webgl);
+    this.renderer = new Renderer(
+      this.options.container,
+      this.camera,
+      this.options.webgl,
+      this.options.renderScale,
+    );
     this.videoTexture = new VideoTexture(this.renderer.gl);
     this.renderer.setVideoTexture(this.videoTexture);
 
@@ -134,6 +140,15 @@ export class VRPlayer {
   setFov(fov: number): void {
     this.ensureAlive();
     this.camera.setFov(fov);
+  }
+
+  /**
+   * 设置渲染缩放倍数（> 1 为超采样，提升清晰度但增加 GPU 开销）。
+   * @param scale 缩放倍数，钳制到 [0.25, 4]
+   */
+  setRenderScale(scale: number): void {
+    this.ensureAlive();
+    this.renderer.setRenderScale(scale);
   }
 
   /** 获取当前 FOV（度） */

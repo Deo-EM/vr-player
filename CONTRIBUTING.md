@@ -21,24 +21,24 @@ pnpm run lint:fix
 
 ## Project Structure
 
-```
+```text
 src/
   index.ts              # Library entry, exports VRPlayer + types
   VRPlayer.ts           # Main class, orchestrates modules
   types.ts              # VRPlayerOptions interface
   core/
-    Renderer.ts         # WebGL context (1.0/2.0), shaders, render loop, resize
-    SphereGeometry.ts   # Procedural UV sphere geometry + buffers
+    Renderer.ts         # WebGL context (1.0/2.0), shaders, render loop, resize, renderScale, highp detection
+    SphereGeometry.ts   # Procedural UV sphere geometry + buffers (supports Uint32 indices on WebGL2)
     Camera.ts           # yaw/pitch/fov state, view/projection matrices
-    VideoTexture.ts     # video element + texture upload, mipmap on WebGL2
+    VideoTexture.ts     # video element + texture upload, mipmap + anisotropic filtering on WebGL2
     DragController.ts   # Pointer events → yaw/pitch
   math/
     mat4.ts             # Pure mat4 functions (column-major)
   shaders/
     vertex.glsl.ts      # Vertex shader source (GLSL 1.00 + 3.00)
-    fragment.glsl.ts    # Fragment shader source (GLSL 1.00 + 3.00)
+    fragment.glsl.ts    # Fragment shader source (GLSL 1.00 + 3.00, mediump baseline, upgraded to highp at runtime)
 tests/                  # Vitest unit tests
-demo/                   # Local debugging page
+demo/                   # Local debugging page (includes renderScale slider)
 ```
 
 ## Coding Standards

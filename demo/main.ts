@@ -10,18 +10,22 @@ const pauseBtn = document.getElementById('pause') as HTMLButtonElement;
 const fovSlider = document.getElementById('fov') as HTMLInputElement;
 const fovValue = document.getElementById('fovValue') as HTMLSpanElement;
 const webglSelect = document.getElementById('webgl') as HTMLSelectElement;
+const renderScaleSlider = document.getElementById('renderScale') as HTMLInputElement;
+const renderScaleValue = document.getElementById('renderScaleValue') as HTMLSpanElement;
 
 let player: VRPlayer;
 let currentSrc = '';
 
 /** 根据版本创建播放器实例 */
 function createPlayer(webglVersion: 1 | 2): void {
+  const renderScale = Number.parseFloat(renderScaleSlider.value);
   player = new VRPlayer({
     container,
     fov: 120,
     muted: false,
     loop: true,
     webgl: webglVersion,
+    renderScale,
   });
 
   // 同步滚轮/代码修改的 FOV 到 UI 滑块
@@ -87,6 +91,13 @@ webglSelect.addEventListener('change', async () => {
       console.error('切换后重新加载失败:', e);
     }
   }
+});
+
+// 超采样倍率调整（实时生效，无需重建）
+renderScaleSlider.addEventListener('input', () => {
+  const scale = Number.parseFloat(renderScaleSlider.value);
+  player.setRenderScale(scale);
+  renderScaleValue.textContent = `${scale.toFixed(2)}x`;
 });
 
 // 清理

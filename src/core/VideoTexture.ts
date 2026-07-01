@@ -8,6 +8,8 @@ import type { GLContext } from './Renderer';
  * - 双重检测机制：优先 requestVideoFrameCallback 精确感知新帧，
  *   降级使用 currentTime dirty check（覆盖 VFC 停止触发的场景）
  * - WebGL2 下启用 mipmap + 三线性过滤（LINEAR_MIPMAP_LINEAR），清晰度更高
+ * - 启用各向异性过滤（EXT_texture_filter_anisotropic）消除掠射角模糊
+ * - 禁用颜色空间转换（UNPACK_COLORSPACE_CONVERSION_NONE）保留原始像素
  */
 export class VideoTexture {
   /** video 元素 */
@@ -27,11 +29,36 @@ export class VideoTexture {
   private readonly supportsVFC: boolean;
   /** 是否运行在 WebGL2 上下文（决定是否启用 mipmap） */
   private readonly isWebGL2: boolean;
+  /** 各向异性过滤扩展（可能为 null） */
+  private readonly anisoExt: {
+    TEXTURE_MAX_ANISOTROPY_EXT: number;
+    MAX_TEXTURE_MAX_ANISOTROPY_EXT: number;
+  } | null;
+  /** 最大各向异性采样值（0 表示不支持） */
+  private readonly maxAnisotropy: number;
 
   constructor(gl: GLContext) {
     // 检测上下文版本：WebGL2RenderingContext 继承自 WebGLRenderingContext
     this.isWebGL2 =
       typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
+
+    // 检测各向异性过滤扩展（消除掠射角的模糊，显著提升球面边缘清晰度）
+    this.anisoExt =
+      (gl.getExtension('EXT_texture_filter_anisotropic') as {
+        TEXTURE_MAX_ANISOTROPY_EXT: number;
+        MAX_TEXTURE_MAX_ANISOTROPY_EXT: number;
+      } | null) ||
+      (gl.getExtension('MOZ_EXT_texture_filter_anisotropic') as {
+        TEXTURE_MAX_ANISOTROPY_EXT: number;
+        MAX_TEXTURE_MAX_ANISOTROPY_EXT: number;
+      } | null) ||
+      (gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic') as {
+        TEXTURE_MAX_ANISOTROPY_EXT: number;
+        MAX_TEXTURE_MAX_ANISOTROPY_EXT: number;
+      } | null);
+    this.maxAnisotropy = this.anisoExt
+      ? (gl.getParameter(this.anisoExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT) as number)
+      : 0;
 
     // 创建 video 元素
     this.video = document.createElement('video');
@@ -60,8 +87,20 @@ export class VideoTexture {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     }
 
+    // 各向异性过滤：在掠射角（球面远端）采样时使用各向异性而非各向同性采样，
+    // 显著减少远端区域的模糊与摩尔纹，是 VR 球面渲染清晰度的关键提升
+    if (this.anisoExt && this.maxAnisotropy > 0) {
+      gl.texParameterf(
+        gl.TEXTURE_2D,
+        this.anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,
+        this.maxAnisotropy,
+      );
+    }
+
     // UNPACK_FLIP_Y_WEBGL 只需设置一次
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    // 禁用浏览器默认颜色空间转换，保留视频原始像素，避免转换导致的精度损失
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
 
     // 检测 API 支持
     this.supportsVFC =

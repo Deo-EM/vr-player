@@ -17,19 +17,28 @@ export class SphereGeometry {
   readonly indexBuffer: WebGLBuffer;
   /** 索引数量 */
   readonly indexCount: number;
+  /** 索引数据类型（UNSIGNED_SHORT 或 UNSIGNED_INT） */
+  readonly indexType: number;
 
   /**
    * @param gl        WebGL 上下文（1.0 或 2.0）
    * @param radius    球体半径
    * @param widthSegments  经度细分（纵向切片数），默认 200（4K 推荐）
    * @param heightSegments 纬度细分（横向切片数），默认 100（4K 推荐）
+   * @param useUint32Indices 是否使用 Uint32 索引（WebGL2 核心支持，突破 65535 顶点限制以提升细分度）
    */
-  constructor(gl: GLContext, radius = 50, widthSegments = 200, heightSegments = 100) {
+  constructor(
+    gl: GLContext,
+    radius = 50,
+    widthSegments = 200,
+    heightSegments = 100,
+    useUint32Indices = false,
+  ) {
     // 预校验顶点数，避免分配 buffer 后才 throw 浪费 GL 资源
     const vertexCount = (widthSegments + 1) * (heightSegments + 1);
-    if (vertexCount > 65535) {
+    if (!useUint32Indices && vertexCount > 65535) {
       throw new Error(
-        `SphereGeometry: vertex count ${vertexCount} exceeds Uint16 index limit (65535). Reduce segments.`,
+        `SphereGeometry: vertex count ${vertexCount} exceeds Uint16 index limit (65535). Reduce segments or enable Uint32 indices.`,
       );
     }
 
@@ -80,7 +89,15 @@ export class SphereGeometry {
     // 创建并填充 position buffer
     this.positionBuffer = createBuffer(gl, new Float32Array(positions));
     this.uvBuffer = createBuffer(gl, new Float32Array(uvs));
-    this.indexBuffer = createIndexBuffer(gl, new Uint16Array(indices));
+
+    // WebGL2 支持 Uint32 索引，突破 65535 顶点限制
+    if (useUint32Indices) {
+      this.indexBuffer = createIndexBuffer(gl, new Uint32Array(indices));
+      this.indexType = gl.UNSIGNED_INT;
+    } else {
+      this.indexBuffer = createIndexBuffer(gl, new Uint16Array(indices));
+      this.indexType = gl.UNSIGNED_SHORT;
+    }
   }
 
   /**
@@ -99,7 +116,7 @@ export class SphereGeometry {
     gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-    gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(gl.TRIANGLES, this.indexCount, this.indexType, 0);
   }
 
   /** 释放 GL 资源 */
@@ -120,7 +137,7 @@ function createBuffer(gl: GLContext, data: Float32Array): WebGLBuffer {
   return buffer;
 }
 
-function createIndexBuffer(gl: GLContext, data: Uint16Array): WebGLBuffer {
+function createIndexBuffer(gl: GLContext, data: Uint16Array | Uint32Array): WebGLBuffer {
   const buffer = gl.createBuffer();
   if (!buffer) {
     throw new Error('SphereGeometry: failed to create WebGLBuffer for indices');
