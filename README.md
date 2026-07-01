@@ -10,7 +10,7 @@
 - 🔭 可配置 FOV 视野角度，范围 [30°, 120°]
 - 🎛️ 支持 WebGL 1.0 / 2.0 双版本，按需切换（2.0 启用 mipmap 三线性过滤，清晰度更高）
 - 🔍 **极致清晰度优化**：各向异性过滤、highp 着色器精度、高细分球体、超采样（renderScale）
-- 🪶 纯 WebGL 实现，无 Three.js 依赖，零运行时依赖（~15KB gzip）
+- 🪶 纯 WebGL 实现，无 Three.js 依赖，零运行时依赖（~6KB gzip）
 - 📐 通过 `ResizeObserver` 自适应容器尺寸
 - 🧹 `destroy()` 一键释放全部资源
 
@@ -220,6 +220,64 @@ player.setRenderScale(1.5);
 | `2.0` | 2x 超采样，接近极限清晰度 | 高 | 高端 GPU |
 
 > **极致清晰度推荐配置**：`webgl: 2` + `renderScale: 2`
+
+## 体积
+
+播放器保持极致轻量，零运行时依赖：
+
+| 产物 | 体积 | 说明 |
+| ---- | ---- | ---- |
+| `dist/index.js` (ESM) | ~20 KB | 压缩后，含内联 GLSL shader |
+| `dist/index.cjs` (CJS) | ~20 KB | 同上 |
+| gzip 后 | **~6.3 KB** | 实际网络传输体积 |
+
+### 横向对比
+
+| 库 | minified | gzip | 定位 |
+| ---- | -------- | ---- | ---- |
+| **vr-player** | **~20 KB** | **~6.3 KB** | 纯 WebGL，零依赖 |
+| Pannellum | ~100 KB | ~35 KB | 轻量全景播放器 |
+| Marzipano | ~200 KB | ~60 KB | 全景工具链 |
+| Three.js（VR 视频场景 tree-shake 后） | ~150-200 KB | ~50 KB | 通用 3D 引擎 |
+| Three.js（全量） | ~600 KB | ~150 KB | 通用 3D 引擎 |
+| Video.js + VR 插件 | ~600 KB | ~180 KB | 通用视频播放器 + VR |
+
+## 陀螺仪注意事项
+
+陀螺仪视角控制依赖浏览器的 `DeviceOrientation` API，使用时需注意以下平台限制：
+
+### 必须在安全上下文（HTTPS）下使用
+
+`DeviceOrientationEvent` 仅在**安全上下文**（Secure Context）中可用：
+
+- ✅ `https://` 站点
+- ✅ `http://localhost` / `http://127.0.0.1`（本地开发）
+- ❌ `http://` 部署的线上站点 — 陀螺仪事件不会触发
+
+在生产环境部署时务必使用 HTTPS，否则移动端陀螺仪功能完全失效。
+
+### iOS 13+ 需用户手势授权
+
+iOS 13+ 的 Safari 要求通过 `DeviceOrientationEvent.requestPermission()` 显式请求权限，且**必须在用户手势（如点击）内调用**。直接在页面加载时构造启用会失败。
+
+正确做法：提供一个按钮，在点击事件中调用 `setGyroscope(true)`：
+
+```ts
+const btn = document.getElementById('gyro-toggle')!;
+btn.addEventListener('click', async () => {
+  const ok = await player.setGyroscope(true);
+  if (!ok) {
+    console.warn('陀螺仪开启失败（设备不支持或权限被拒绝）');
+  }
+});
+```
+
+### 其他注意点
+
+- **设备支持**：部分桌面浏览器与低端设备无陀螺仪硬件，`setGyroscope(true)` 将返回 `false`
+- **权限拒绝**：用户拒绝授权后需再次通过手势触发请求
+- **与拖动共存**：陀螺仪以增量方式叠加到视角上，与拖动控制器互不干扰，可同时使用
+- **后台暂停**：页面切到后台时设备方向事件可能停止，回到前台后通常自动恢复；如遇异常可重新调用 `setGyroscope`
 
 ## 开源协议
 
