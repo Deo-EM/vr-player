@@ -35,3 +35,6 @@ scripts/*-key.pem
 
 # Husky internals (auto-generated)
 .husky/_/
+
+# AI assistant
+.codebuddy/

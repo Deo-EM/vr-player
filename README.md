@@ -14,6 +14,17 @@
 - 📐 通过 `ResizeObserver` 自适应容器尺寸
 - 🧹 `destroy()` 一键释放全部资源
 
+## 浏览器兼容性
+
+| 浏览器 | 最低版本 | 发布时间 |
+| ------ | -------- | -------- |
+| Chrome / Edge | ≥ 94 | 2021-09 |
+| Firefox | ≥ 93 | 2021-10 |
+| Safari (macOS / iOS) | ≥ 16.4 | 2023-03 |
+| Samsung Internet | ≥ 18 | - |
+
+> 上述限制主要来自 Class Static Blocks 语法。WebGL 与陀螺仪 API 本身也要求相对现代的浏览器，因此该兼容范围与 VR / 全景视频的使用场景基本匹配。如需兼容更旧的浏览器，可自行引入 swc / babel 做语法降级。
+
 ## 安装
 
 ```bash
@@ -51,7 +62,7 @@ await player.load('/video/panorama.mp4');
 | `loop`     | `boolean`       | `false` | 循环播放                               |
 | `webgl`    | `1 \| 2`        | `1`     | WebGL 版本。`1` 兼容性最广；`2` 启用 mipmap 三线性过滤、高细分球体、highp 精度，清晰度更高。若 `2` 不可用自动降级到 `1` |
 | `renderScale` | `number`     | `1`     | 渲染缩放倍数（相对于 devicePixelRatio）。`> 1` 为超采样（SSAA），提升清晰度但增加 GPU 开销；`< 1` 为降采样。钳制到 [0.25, 4] |
-| `gyroscope` | `boolean`      | `false` | 是否构造后启用陀螺仪视角控制。iOS 13+ 因权限策略，建议改为在用户手势中调用 `setGyroscope(true)` |
+| `gyroscope` | `boolean`      | `false` | 是否构造后启用陀螺仪视角控制（平台限制详见[陀螺仪注意事项](#陀螺仪注意事项)） |
 
 ### 方法
 
@@ -260,23 +271,12 @@ player.setRenderScale(1.5);
 
 iOS 13+ 的 Safari 要求通过 `DeviceOrientationEvent.requestPermission()` 显式请求权限，且**必须在用户手势（如点击）内调用**。直接在页面加载时构造启用会失败。
 
-正确做法：提供一个按钮，在点击事件中调用 `setGyroscope(true)`：
-
-```ts
-const btn = document.getElementById('gyro-toggle')!;
-btn.addEventListener('click', async () => {
-  const ok = await player.setGyroscope(true);
-  if (!ok) {
-    console.warn('陀螺仪开启失败（设备不支持或权限被拒绝）');
-  }
-});
-```
+正确做法见 [`setGyroscope()`](#playersetgyroscopeenabled-boolean-promiseboolean) 方法的示例——在按钮点击事件中调用即可。
 
 ### 其他注意点
 
 - **设备支持**：部分桌面浏览器与低端设备无陀螺仪硬件，`setGyroscope(true)` 将返回 `false`
 - **权限拒绝**：用户拒绝授权后需再次通过手势触发请求
-- **与拖动共存**：陀螺仪以增量方式叠加到视角上，与拖动控制器互不干扰，可同时使用
 - **后台暂停**：页面切到后台时设备方向事件可能停止，回到前台后通常自动恢复；如遇异常可重新调用 `setGyroscope`
 
 ## 开源协议
