@@ -177,10 +177,7 @@ function createMockGL(): GLContext {
 }
 
 /** 从 mock GL 获取 buffer 数据，缺失则抛错（替代非空断言） */
-function getBuffer(
-  gl: GLContext,
-  buffer: WebGLBuffer,
-): Float32Array | Uint16Array | Uint32Array {
+function getBuffer(gl: GLContext, buffer: WebGLBuffer): Float32Array | Uint16Array | Uint32Array {
   const mock = gl as unknown as MockGL;
   const data = mock.buffers.get(buffer);
   if (!data) {

@@ -63,7 +63,7 @@ export class Renderer {
    */
   constructor(container: HTMLElement, camera: Camera, webglVersion: 1 | 2 = 1, renderScale = 1) {
     this.camera = camera;
-    this.renderScale = Math.max(0.25, renderScale);
+    this.renderScale = Math.max(0.25, Math.min(4, renderScale));
 
     // 创建 canvas
     this.canvas = document.createElement('canvas');
@@ -128,6 +128,14 @@ export class Renderer {
       this.resizeObserver = new ResizeObserver(() => this.resize());
       this.resizeObserver.observe(container);
     }
+
+    // 监听 WebGL 上下文丢失：阻止默认行为以允许后续恢复，
+    // 丢失时暂停渲染循环，避免在失效上下文上产生 GL 错误刷屏
+    this.canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this.stop();
+      console.warn('[VRPlayer] WebGL context lost. Rendering paused.');
+    });
   }
 
   /**
@@ -246,7 +254,14 @@ export class Renderer {
     this.running = true;
     const loop = () => {
       if (!this.running) return;
-      this.render();
+      // 单帧渲染异常不应静默终止循环；捕获后记录并停止，避免画面冻结且无日志
+      try {
+        this.render();
+      } catch (e) {
+        console.error('[VRPlayer] render loop error:', e);
+        this.stop();
+        return;
+      }
       this.rafId = requestAnimationFrame(loop);
     };
     this.rafId = requestAnimationFrame(loop);
@@ -265,6 +280,9 @@ export class Renderer {
   private render(): void {
     const gl = this.gl;
 
+    // 上下文丢失时跳过渲染，避免在失效上下文上产生 GL 错误
+    if (gl.isContextLost()) return;
+
     // 视频纹理可能尚未注入
     const texture = this.videoTexture;
     if (!texture) return;
@@ -275,6 +293,10 @@ export class Renderer {
     // 清屏
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    // 视频纹理尚未初始化（视频未加载/首帧未到达）时跳过绘制，
+    // 避免对 incomplete texture 采样产生控制台警告
+    if (!texture.ready) return;
 
     // 计算矩阵
     const aspect = this.canvas.width / this.canvas.height;

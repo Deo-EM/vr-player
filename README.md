@@ -181,7 +181,7 @@ npx vite demo
 
 | 分类       | 选型      | 说明                           |
 | ---------- | --------- | ------------------------------ |
-| 构建       | Rollldown | 基于 Rust，ESM + CJS 双格式输出 |
+| 构建       | Rolldown | 基于 Rust，ESM + CJS 双格式输出 |
 | 语言       | TypeScript (strict) | 类型安全              |
 | 代码检查/格式化 | Biome | 集成 lint + format            |
 | 测试       | Vitest    | 原生 TS/ESM 支持               |

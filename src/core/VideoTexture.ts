@@ -21,6 +21,11 @@ export class VideoTexture {
   private lastUploadedTime = -1;
   /** 是否已分配纹理内存（首帧） */
   private textureInitialized = false;
+
+  /** 视频纹理是否已就绪（首帧已上传），未就绪时渲染器跳过绘制以避免 incomplete texture 采样警告 */
+  get ready(): boolean {
+    return this.textureInitialized;
+  }
   /** requestVideoFrameCallback 标记有新帧待上传 */
   private pendingFrame = false;
   /** rVFC 句柄 */
@@ -90,11 +95,7 @@ export class VideoTexture {
     // 各向异性过滤：在掠射角（球面远端）采样时使用各向异性而非各向同性采样，
     // 显著减少远端区域的模糊与摩尔纹，是 VR 球面渲染清晰度的关键提升
     if (this.anisoExt && this.maxAnisotropy > 0) {
-      gl.texParameterf(
-        gl.TEXTURE_2D,
-        this.anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,
-        this.maxAnisotropy,
-      );
+      gl.texParameterf(gl.TEXTURE_2D, this.anisoExt.TEXTURE_MAX_ANISOTROPY_EXT, this.maxAnisotropy);
     }
 
     // UNPACK_FLIP_Y_WEBGL 只需设置一次
