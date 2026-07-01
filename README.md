@@ -8,7 +8,8 @@
 - 🎥 支持 360° 全景视频播放（等距柱状投影）
 - 🖱️ 拖动旋转视角（水平/垂直），垂直视角限制在 ±85°
 - 🔭 可配置 FOV 视野角度，范围 [30°, 120°]
-- 🪶 纯 WebGL 1.0 实现，无 Three.js 依赖，零运行时依赖（~15KB gzip）
+- 🎛️ 支持 WebGL 1.0 / 2.0 双版本，按需切换（2.0 启用 mipmap 三线性过滤，清晰度更高）
+- 🪶 纯 WebGL 实现，无 Three.js 依赖，零运行时依赖（~15KB gzip）
 - 📐 通过 `ResizeObserver` 自适应容器尺寸
 - 🧹 `destroy()` 一键释放全部资源
 
@@ -26,6 +27,7 @@ import { VRPlayer } from 'vr-player';
 const player = new VRPlayer({
   container: document.getElementById('player')!,
   fov: 75,
+  webgl: 2, // 可选：使用 WebGL 2.0 获得更佳清晰度（默认 1）
 });
 
 await player.load('/video/panorama.mp4');
@@ -42,9 +44,10 @@ await player.load('/video/panorama.mp4');
 | 参数       | 类型            | 默认值  | 说明                                   |
 | ---------- | --------------- | ------- | -------------------------------------- |
 | `container`| `HTMLElement`   | -       | **必填。** canvas 的挂载容器           |
-| `fov`      | `number`        | `75`    | 视野角度（度），自动限制在 [30, 120] 范围 |
+| `fov`      | `number`        | `90`    | 视野角度（度），自动限制在 [30, 120] 范围 |
 | `muted`    | `boolean`       | `true`  | 静音播放（浏览器自动播放策略要求）       |
 | `loop`     | `boolean`       | `false` | 循环播放                               |
+| `webgl`    | `1 \| 2`        | `1`     | WebGL 版本。`1` 兼容性最广；`2` 启用 mipmap 三线性过滤，清晰度更高。若 `2` 不可用自动降级到 `1` |
 
 ### 方法
 
@@ -88,10 +91,11 @@ unsubscribe();
 
 播放器渲染一个内部可见的 UV 球体，将全景视频作为纹理映射到球体内表面。相机位于球心向外观察，通过拖动输入计算 yaw/pitch 角度控制视角方向，FOV 控制透视投影。
 
-- **球体几何**：程序化生成（64×32 分段），UV.x 翻转使纹理朝向内部。
-- **视频纹理**：首帧通过 `texImage2D` 上传，后续帧通过 `texSubImage2D` 更新，以 `video.currentTime` 做脏检查避免重复上传。
+- **球体几何**：程序化生成（200×100 分段，支持 4K 纹理），UV 翻转使纹理朝向内部。
+- **视频纹理**：首帧通过 `texImage2D` 上传，后续帧通过 `texSubImage2D` 更新，以 `video.currentTime` 做脏检查避免重复上传。WebGL 2.0 下额外启用 mipmap + 三线性过滤（`LINEAR_MIPMAP_LINEAR`）。
 - **相机**：Y 轴（yaw）+ X 轴（pitch）欧拉角控制，pitch 限制在 ±85° 防止翻转。
 - **交互**：Pointer Events 统一鼠标与触摸操作，通过 pointer capture 支持拖出元素仍可响应。
+- **WebGL 版本**：默认使用 WebGL 1.0（兼容性最广）；配置 `webgl: 2` 时启用 WebGL 2.0，支持 NPOT 纹理 mipmap 与三线性过滤，清晰度显著提升。若浏览器不支持 2.0 则自动降级。
 
 ## 开发指南
 
@@ -121,7 +125,7 @@ npx vite demo
 | 代码检查/格式化 | Biome | 集成 lint + format            |
 | 测试       | Vitest    | 原生 TS/ESM 支持               |
 | 版本管理   | Changesets| 变更日志与发布管理              |
-| 渲染       | WebGL 1.0 | 纯 WebGL，无渲染框架依赖        |
+| 渲染       | WebGL 1.0 / 2.0 | 纯 WebGL 双版本，无渲染框架依赖 |
 
 ## 开源协议
 

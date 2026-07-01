@@ -1,3 +1,5 @@
+import type { GLContext } from './Renderer';
+
 /**
  * 视频纹理：管理 video 元素与 WebGL 纹理对象。
  *
@@ -5,6 +7,7 @@
  * - 首帧用 texImage2D 分配，后续用 texSubImage2D 区域更新
  * - 双重检测机制：优先 requestVideoFrameCallback 精确感知新帧，
  *   降级使用 currentTime dirty check（覆盖 VFC 停止触发的场景）
+ * - WebGL2 下启用 mipmap + 三线性过滤（LINEAR_MIPMAP_LINEAR），清晰度更高
  */
 export class VideoTexture {
   /** video 元素 */
@@ -22,8 +25,14 @@ export class VideoTexture {
   private vfcId: number | null = null;
   /** 是否支持 requestVideoFrameCallback */
   private readonly supportsVFC: boolean;
+  /** 是否运行在 WebGL2 上下文（决定是否启用 mipmap） */
+  private readonly isWebGL2: boolean;
 
-  constructor(gl: WebGLRenderingContext) {
+  constructor(gl: GLContext) {
+    // 检测上下文版本：WebGL2RenderingContext 继承自 WebGLRenderingContext
+    this.isWebGL2 =
+      typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
+
     // 创建 video 元素
     this.video = document.createElement('video');
     this.video.muted = true;
@@ -40,9 +49,16 @@ export class VideoTexture {
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    // 使用线性过滤（注意：WebGL1 不支持 NPOT 纹理 mipmap，故用 LINEAR）
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    if (this.isWebGL2) {
+      // WebGL2：支持 NPOT 纹理 mipmap，启用三线性过滤以获得最佳清晰度
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    } else {
+      // WebGL1：NPOT 不兼容 mipmap，使用双线性过滤
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    }
 
     // UNPACK_FLIP_Y_WEBGL 只需设置一次
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -127,7 +143,7 @@ export class VideoTexture {
    *
    * @returns true 表示本次有新帧（无论是否实际上传）
    */
-  update(gl: WebGLRenderingContext): boolean {
+  update(gl: GLContext): boolean {
     const v = this.video;
 
     // 视频未就绪或已结束时不更新
@@ -183,8 +199,9 @@ export class VideoTexture {
   /**
    * 执行实际的像素上传到 GPU。
    * 这是同步操作（CPU→GPU 拷贝），是唯一的阻塞点。
+   * WebGL2 下额外生成 mipmap 以支持三线性过滤。
    */
-  private upload(gl: WebGLRenderingContext): void {
+  private upload(gl: GLContext): void {
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
 
     if (!this.textureInitialized) {
@@ -193,18 +210,23 @@ export class VideoTexture {
     } else {
       gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.video);
     }
+
+    // WebGL2：每帧上传后重新生成 mipmap，确保缩放时三线性过滤生效
+    if (this.isWebGL2) {
+      gl.generateMipmap(gl.TEXTURE_2D);
+    }
   }
 
   /**
    * 绑定纹理到指定纹理单元。
    */
-  bind(gl: WebGLRenderingContext, unit: number): void {
+  bind(gl: GLContext, unit: number): void {
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
   }
 
   /** 释放全部资源 */
-  dispose(gl: WebGLRenderingContext): void {
+  dispose(gl: GLContext): void {
     this.cancelVFC();
     gl.deleteTexture(this.texture);
     this.video.pause();

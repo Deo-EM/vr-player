@@ -1,3 +1,5 @@
+import type { GLContext } from './Renderer';
+
 /**
  * 程序化生成 UV 球体几何数据，并创建 WebGL buffers。
  *
@@ -17,12 +19,12 @@ export class SphereGeometry {
   readonly indexCount: number;
 
   /**
-   * @param gl        WebGL 上下文
+   * @param gl        WebGL 上下文（1.0 或 2.0）
    * @param radius    球体半径
    * @param widthSegments  经度细分（纵向切片数），默认 200（4K 推荐）
    * @param heightSegments 纬度细分（横向切片数），默认 100（4K 推荐）
    */
-  constructor(gl: WebGLRenderingContext, radius = 50, widthSegments = 200, heightSegments = 100) {
+  constructor(gl: GLContext, radius = 50, widthSegments = 200, heightSegments = 100) {
     // 预校验顶点数，避免分配 buffer 后才 throw 浪费 GL 资源
     const vertexCount = (widthSegments + 1) * (heightSegments + 1);
     if (vertexCount > 65535) {
@@ -83,11 +85,11 @@ export class SphereGeometry {
 
   /**
    * 绑定 attributes 并绘制。
-   * @param gl              WebGL 上下文
+   * @param gl              WebGL 上下文（1.0 或 2.0）
    * @param positionLoc     aPosition attribute location
    * @param uvLoc           aUv attribute location
    */
-  draw(gl: WebGLRenderingContext, positionLoc: number, uvLoc: number): void {
+  draw(gl: GLContext, positionLoc: number, uvLoc: number): void {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
     gl.enableVertexAttribArray(positionLoc);
     gl.vertexAttribPointer(positionLoc, 3, gl.FLOAT, false, 0, 0);
@@ -101,14 +103,14 @@ export class SphereGeometry {
   }
 
   /** 释放 GL 资源 */
-  dispose(gl: WebGLRenderingContext): void {
+  dispose(gl: GLContext): void {
     gl.deleteBuffer(this.positionBuffer);
     gl.deleteBuffer(this.uvBuffer);
     gl.deleteBuffer(this.indexBuffer);
   }
 }
 
-function createBuffer(gl: WebGLRenderingContext, data: Float32Array): WebGLBuffer {
+function createBuffer(gl: GLContext, data: Float32Array): WebGLBuffer {
   const buffer = gl.createBuffer();
   if (!buffer) {
     throw new Error('SphereGeometry: failed to create WebGLBuffer');
@@ -118,7 +120,7 @@ function createBuffer(gl: WebGLRenderingContext, data: Float32Array): WebGLBuffe
   return buffer;
 }
 
-function createIndexBuffer(gl: WebGLRenderingContext, data: Uint16Array): WebGLBuffer {
+function createIndexBuffer(gl: GLContext, data: Uint16Array): WebGLBuffer {
   const buffer = gl.createBuffer();
   if (!buffer) {
     throw new Error('SphereGeometry: failed to create WebGLBuffer for indices');

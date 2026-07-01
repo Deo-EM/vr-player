@@ -1,24 +1,29 @@
 import type { Mat4 } from '../math/mat4';
-import { FRAGMENT_SHADER_SOURCE } from '../shaders/fragment.glsl';
-import { VERTEX_SHADER_SOURCE } from '../shaders/vertex.glsl';
+import { FRAGMENT_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE_300 } from '../shaders/fragment.glsl';
+import { VERTEX_SHADER_SOURCE, VERTEX_SHADER_SOURCE_300 } from '../shaders/vertex.glsl';
 import type { Camera } from './Camera';
 import { SphereGeometry } from './SphereGeometry';
 import type { VideoTexture } from './VideoTexture';
+
+/** WebGL 上下文联合类型（兼容 WebGL 1.0 与 2.0） */
+export type GLContext = WebGLRenderingContext | WebGL2RenderingContext;
 
 /**
  * WebGL 渲染器：管理 GL 上下文、Shader Program、渲染循环、Canvas resize。
  *
  * 职责：
- * - 获取 WebGL 1.0 上下文
- * - 编译/链接 Shader Program
+ * - 按 webglVersion 获取 WebGL 1.0 / 2.0 上下文（2.0 不可用时自动降级）
+ * - 编译/链接对应版本的 Shader Program（GLSL 1.00 / 3.00）
  * - 驱动 requestAnimationFrame 渲染循环
  * - 通过 ResizeObserver 自适应容器尺寸
  */
 export class Renderer {
   /** canvas 元素 */
   readonly canvas: HTMLCanvasElement;
-  /** WebGL 上下文 */
-  readonly gl: WebGLRenderingContext;
+  /** WebGL 上下文（1.0 或 2.0） */
+  readonly gl: GLContext;
+  /** 实际使用的 WebGL 版本（可能因降级与请求值不同） */
+  readonly webglVersion: 1 | 2;
 
   /** Shader program */
   private program: WebGLProgram;
@@ -48,10 +53,11 @@ export class Renderer {
   private resizeObserver: ResizeObserver | null = null;
 
   /**
-   * @param container 挂载容器，canvas 将插入其中
-   * @param camera    相机实例
+   * @param container     挂载容器，canvas 将插入其中
+   * @param camera        相机实例
+   * @param webglVersion  请求的 WebGL 版本，默认 1；若请求 2 但不支持则自动降级到 1
    */
-  constructor(container: HTMLElement, camera: Camera) {
+  constructor(container: HTMLElement, camera: Camera, webglVersion: 1 | 2 = 1) {
     this.camera = camera;
 
     // 创建 canvas
@@ -61,19 +67,17 @@ export class Renderer {
     this.canvas.style.display = 'block';
     container.appendChild(this.canvas);
 
-    // 获取 WebGL 上下文
-    const gl = this.canvas.getContext('webgl', {
-      alpha: false,
-      antialias: true,
-      preserveDrawingBuffer: false,
-    });
-    if (!gl) {
-      throw new Error('Renderer: WebGL is not supported in this environment');
-    }
-    this.gl = gl as WebGLRenderingContext;
+    // 获取 WebGL 上下文（含自动降级逻辑）
+    const { gl, version } = this.acquireContext(webglVersion);
+    this.gl = gl;
+    this.webglVersion = version;
+
+    // 根据版本选择对应 Shader 源码
+    const vsSource = version === 2 ? VERTEX_SHADER_SOURCE_300 : VERTEX_SHADER_SOURCE;
+    const fsSource = version === 2 ? FRAGMENT_SHADER_SOURCE_300 : FRAGMENT_SHADER_SOURCE;
 
     // 编译 shader program
-    this.program = this.createProgram(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
+    this.program = this.createProgram(vsSource, fsSource);
     gl.useProgram(this.program);
 
     // 获取 attribute locations（-1 表示未找到）
@@ -112,6 +116,36 @@ export class Renderer {
       this.resizeObserver = new ResizeObserver(() => this.resize());
       this.resizeObserver.observe(container);
     }
+  }
+
+  /**
+   * 获取 WebGL 上下文。
+   * - 请求 2 时优先 `webgl2`，失败则降级 `webgl` 并输出 warning
+   * - 请求 1 时直接用 `webgl`（兼容性最好）
+   */
+  private acquireContext(requested: 1 | 2): { gl: GLContext; version: 1 | 2 } {
+    const attrs: WebGLContextAttributes = {
+      alpha: false,
+      antialias: true,
+      preserveDrawingBuffer: false,
+    };
+
+    if (requested === 2) {
+      const gl2 = this.canvas.getContext('webgl2', attrs) as WebGL2RenderingContext | null;
+      if (gl2) {
+        return { gl: gl2, version: 2 };
+      }
+      // 降级
+      console.warn(
+        '[VRPlayer] WebGL 2.0 is not available in this environment, falling back to WebGL 1.0.',
+      );
+    }
+
+    const gl1 = this.canvas.getContext('webgl', attrs) as WebGLRenderingContext | null;
+    if (!gl1) {
+      throw new Error('Renderer: WebGL is not supported in this environment');
+    }
+    return { gl: gl1, version: 1 };
   }
 
   /** 编译单个 shader */

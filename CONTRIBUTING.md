@@ -27,16 +27,16 @@ src/
   VRPlayer.ts           # Main class, orchestrates modules
   types.ts              # VRPlayerOptions interface
   core/
-    Renderer.ts         # WebGL context, shaders, render loop, resize
+    Renderer.ts         # WebGL context (1.0/2.0), shaders, render loop, resize
     SphereGeometry.ts   # Procedural UV sphere geometry + buffers
     Camera.ts           # yaw/pitch/fov state, view/projection matrices
-    VideoTexture.ts     # video element + texture upload with dirty-check
+    VideoTexture.ts     # video element + texture upload, mipmap on WebGL2
     DragController.ts   # Pointer events → yaw/pitch
   math/
     mat4.ts             # Pure mat4 functions (column-major)
   shaders/
-    vertex.glsl.ts      # Vertex shader source
-    fragment.glsl.ts    # Fragment shader source
+    vertex.glsl.ts      # Vertex shader source (GLSL 1.00 + 3.00)
+    fragment.glsl.ts    # Fragment shader source (GLSL 1.00 + 3.00)
 tests/                  # Vitest unit tests
 demo/                   # Local debugging page
 ```
