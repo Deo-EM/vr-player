@@ -73,14 +73,18 @@ export class VRPlayer {
     // 陀螺仪控制器（与拖动控制器共存，均通过增量叠加修改 Camera）
     this.gyroController = new GyroscopeController(this.camera);
     if (this.options.gyroscope) {
-      // 异步尝试开启；iOS 13+ 在无用户手势时会失败，仅 warn 不影响其他功能
-      this.gyroController.enable().then((ok) => {
-        if (!ok) {
-          console.warn(
-            '[VRPlayer] Gyroscope failed to enable on construction. Call setGyroscope(true) within a user gesture on iOS.',
-          );
-        }
-      });
+      // 异步尝试开启；iOS 13+ 在无用户手势时会失败，仅 warn 不影响其他功能。
+      // dispose 后 enable 会安全返回 false，不会残留监听。
+      void this.gyroController
+        .enable()
+        .then((ok) => {
+          if (!ok && !this.destroyed) {
+            console.warn(
+              '[VRPlayer] Gyroscope failed to enable on construction. Call setGyroscope(true) within a user gesture on iOS.',
+            );
+          }
+        })
+        .catch(() => {});
     }
 
     // 启动渲染循环
