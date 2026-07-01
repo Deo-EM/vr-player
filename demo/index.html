@@ -74,6 +74,25 @@
         min-width: 40px;
         text-align: right;
       }
+      .progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        color: #ddd;
+        flex: 1;
+        min-width: 260px;
+      }
+      .progress input[type='range'] {
+        flex: 1;
+        min-width: 120px;
+      }
+      .progress .time {
+        min-width: 96px;
+        text-align: center;
+        white-space: nowrap;
+      }
     </style>
   </head>
   <body>
@@ -83,6 +102,10 @@
       <button id="load">加载</button>
       <button id="play">播放</button>
       <button id="pause">暂停</button>
+      <div class="progress">
+        <input type="range" id="seek" min="0" max="1000" step="1" value="0" />
+        <span class="time" id="time">00:00 / 00:00</span>
+      </div>
       <button id="gyro">陀螺仪: 关</button>
       <label>
         FOV

@@ -1,4 +1,5 @@
 import type { Mat4 } from '../math/mat4';
+import { transpose } from '../math/mat4';
 import { FRAGMENT_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE_300 } from '../shaders/fragment.glsl';
 import { VERTEX_SHADER_SOURCE, VERTEX_SHADER_SOURCE_300 } from '../shaders/vertex.glsl';
 import type { Camera } from './Camera';
@@ -36,14 +37,16 @@ export class Renderer {
 
   // attribute / uniform locations
   private readonly positionLoc: number;
-  private readonly uvLoc: number;
   private readonly projectionLoc: WebGLUniformLocation;
   private readonly viewLoc: WebGLUniformLocation;
   private readonly textureLoc: WebGLUniformLocation;
+  private readonly invViewLoc: WebGLUniformLocation;
 
   /** 预分配的矩阵，避免每帧 GC */
   private readonly viewMatrix: Mat4 = new Float32Array(16);
   private readonly projectionMatrix: Mat4 = new Float32Array(16);
+  /** 逆视图矩阵（视图矩阵为纯旋转，其逆 = 转置） */
+  private readonly invViewMatrix: Mat4 = new Float32Array(16);
 
   /** 渲染缩放倍数（相对于 devicePixelRatio），> 1 为超采样 */
   private renderScale: number;
@@ -96,23 +99,28 @@ export class Renderer {
 
       // 获取 attribute locations（-1 表示未找到）
       const positionLoc = acquired.gl.getAttribLocation(this.program, 'aPosition');
-      const uvLoc = acquired.gl.getAttribLocation(this.program, 'aUv');
-      if (positionLoc === -1 || uvLoc === -1) {
+      if (positionLoc === -1) {
         throw new Error('Renderer: missing required attribute location');
       }
       this.positionLoc = positionLoc;
-      this.uvLoc = uvLoc;
 
       // 获取 uniform locations（null 表示未找到；注意 0 是合法的 location 值，不能用 falsy 判断）
       const projectionLoc = acquired.gl.getUniformLocation(this.program, 'uProjection');
       const viewLoc = acquired.gl.getUniformLocation(this.program, 'uView');
       const textureLoc = acquired.gl.getUniformLocation(this.program, 'uTexture');
-      if (projectionLoc === null || viewLoc === null || textureLoc === null) {
+      const invViewLoc = acquired.gl.getUniformLocation(this.program, 'uInvView');
+      if (
+        projectionLoc === null ||
+        viewLoc === null ||
+        textureLoc === null ||
+        invViewLoc === null
+      ) {
         throw new Error('Renderer: missing required uniform location');
       }
       this.projectionLoc = projectionLoc;
       this.viewLoc = viewLoc;
       this.textureLoc = textureLoc;
+      this.invViewLoc = invViewLoc;
 
       // 创建球体几何：WebGL2 使用更高细分度 + Uint32 索引以减少 UV 仿射插值误差
       if (acquired.version === 2) {
@@ -337,16 +345,20 @@ export class Renderer {
     this.camera.getViewMatrix(this.viewMatrix);
     this.camera.getProjectionMatrix(aspect, this.projectionMatrix);
 
+    // 逆视图矩阵：视图矩阵为纯旋转矩阵，逆矩阵 = 转置
+    transpose(this.invViewMatrix, this.viewMatrix);
+
     // 上传 uniform
     gl.uniformMatrix4fv(this.projectionLoc, false, this.projectionMatrix);
     gl.uniformMatrix4fv(this.viewLoc, false, this.viewMatrix);
+    gl.uniformMatrix4fv(this.invViewLoc, false, this.invViewMatrix);
 
     // 绑定纹理到单元 0
     texture.bind(gl, 0);
     gl.uniform1i(this.textureLoc, 0);
 
-    // 绘制球体
-    this.geometry.draw(gl, this.positionLoc, this.uvLoc);
+    // 绘制球体（逐像素光线投射，不再需要顶点 UV）
+    this.geometry.draw(gl, this.positionLoc);
   }
 
   /** 释放全部 GL 资源 */

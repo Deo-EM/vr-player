@@ -101,19 +101,14 @@ export class SphereGeometry {
   }
 
   /**
-   * 绑定 attributes 并绘制。
+   * 绑定 position attribute 并绘制。
    * @param gl              WebGL 上下文（1.0 或 2.0）
    * @param positionLoc     aPosition attribute location
-   * @param uvLoc           aUv attribute location
    */
-  draw(gl: GLContext, positionLoc: number, uvLoc: number): void {
+  draw(gl: GLContext, positionLoc: number): void {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
     gl.enableVertexAttribArray(positionLoc);
     gl.vertexAttribPointer(positionLoc, 3, gl.FLOAT, false, 0, 0);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
-    gl.enableVertexAttribArray(uvLoc);
-    gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.drawElements(gl.TRIANGLES, this.indexCount, this.indexType, 0);
