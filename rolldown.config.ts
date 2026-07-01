@@ -7,14 +7,16 @@ export default defineConfig({
       file: 'dist/index.js',
       format: 'esm',
       sourcemap: true,
+      minify: true,
     },
     {
       file: 'dist/index.cjs',
       format: 'cjs',
       sourcemap: true,
+      minify: true,
     },
   ],
   platform: 'browser',
   treeshake: true,
-  // 零运行时依赖，无需 external
+  // 零运行时依赖，无需外部依赖
 });
