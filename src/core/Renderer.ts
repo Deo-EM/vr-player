@@ -54,6 +54,8 @@ export class Renderer {
   private running = false;
   /** ResizeObserver */
   private resizeObserver: ResizeObserver | null = null;
+  /** webglcontextlost 事件处理器引用（用于 dispose 时移除） */
+  private readonly onContextLost: (e: Event) => void;
 
   /**
    * @param container     挂载容器，canvas 将插入其中
@@ -131,11 +133,12 @@ export class Renderer {
 
     // 监听 WebGL 上下文丢失：阻止默认行为以允许后续恢复，
     // 丢失时暂停渲染循环，避免在失效上下文上产生 GL 错误刷屏
-    this.canvas.addEventListener('webglcontextlost', (e) => {
+    this.onContextLost = (e: Event) => {
       e.preventDefault();
       this.stop();
       console.warn('[VRPlayer] WebGL context lost. Rendering paused.');
-    });
+    };
+    this.canvas.addEventListener('webglcontextlost', this.onContextLost);
   }
 
   /**
@@ -318,6 +321,7 @@ export class Renderer {
   /** 释放全部 GL 资源 */
   dispose(): void {
     this.stop();
+    this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;

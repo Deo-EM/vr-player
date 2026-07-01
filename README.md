@@ -47,7 +47,7 @@ await player.load('/video/panorama.mp4');
 | ---------- | --------------- | ------- | -------------------------------------- |
 | `container`| `HTMLElement`   | -       | **必填。** canvas 的挂载容器           |
 | `fov`      | `number`        | `90`    | 视野角度（度），自动限制在 [30, 120] 范围 |
-| `muted`    | `boolean`       | `true`  | 静音播放（浏览器自动播放策略要求）       |
+| `muted`    | `boolean`       | `false` | 是否静音                               |
 | `loop`     | `boolean`       | `false` | 循环播放                               |
 | `webgl`    | `1 \| 2`        | `1`     | WebGL 版本。`1` 兼容性最广；`2` 启用 mipmap 三线性过滤、高细分球体、highp 精度，清晰度更高。若 `2` 不可用自动降级到 `1` |
 | `renderScale` | `number`     | `1`     | 渲染缩放倍数（相对于 devicePixelRatio）。`> 1` 为超采样（SSAA），提升清晰度但增加 GPU 开销；`< 1` 为降采样。钳制到 [0.25, 4] |

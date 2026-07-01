@@ -39,7 +39,7 @@ export class VRPlayer {
     this.options = {
       container: options.container,
       fov: options.fov ?? 90,
-      muted: options.muted ?? true,
+      muted: options.muted ?? false,
       loop: options.loop ?? false,
       webgl: options.webgl ?? 1,
       renderScale: options.renderScale ?? 1,
