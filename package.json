@@ -40,7 +40,7 @@
     "version": "changeset version",
     "release": "changeset publish",
     "release:patch": "node scripts/release.js patch",
-    "up": "node scripts/release.js patch",
+    "upload": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
     "release:major": "node scripts/release.js major",
     "ci": "biome check . && vitest run && rolldown -c rolldown.config.ts",
