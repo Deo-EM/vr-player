@@ -38,7 +38,7 @@ export class VRPlayer {
     // 合并默认值
     this.options = {
       container: options.container,
-      fov: options.fov ?? 75,
+      fov: options.fov ?? 90,
       muted: options.muted ?? true,
       loop: options.loop ?? false,
     };

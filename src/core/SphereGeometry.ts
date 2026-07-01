@@ -19,10 +19,10 @@ export class SphereGeometry {
   /**
    * @param gl        WebGL 上下文
    * @param radius    球体半径
-   * @param widthSegments  经度细分（纵向切片数），默认 64
-   * @param heightSegments 纬度细分（横向切片数），默认 32
+   * @param widthSegments  经度细分（纵向切片数），默认 200（4K 推荐）
+   * @param heightSegments 纬度细分（横向切片数），默认 100（4K 推荐）
    */
-  constructor(gl: WebGLRenderingContext, radius = 50, widthSegments = 64, heightSegments = 32) {
+  constructor(gl: WebGLRenderingContext, radius = 50, widthSegments = 200, heightSegments = 100) {
     // 预校验顶点数，避免分配 buffer 后才 throw 浪费 GL 资源
     const vertexCount = (widthSegments + 1) * (heightSegments + 1);
     if (vertexCount > 65535) {
@@ -54,8 +54,8 @@ export class SphereGeometry {
         const pz = radius * sinTheta * sinPhi;
         positions.push(px, py, pz);
 
-        // UV：翻转 X 方向使贴图正面朝向球心（内表面观察）
-        uvs.push(1 - u, v);
+        // UV：翻转 Y 方向，修正视频源的方向问题
+        uvs.push(u, 1 - v);
       }
     }
 

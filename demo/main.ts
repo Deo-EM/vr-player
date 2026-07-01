@@ -11,7 +11,7 @@ const fovValue = document.getElementById('fovValue') as HTMLSpanElement;
 
 const player = new VRPlayer({
   container,
-  fov: 75,
+  fov: 120,
   muted: false,
   loop: true,
 });
