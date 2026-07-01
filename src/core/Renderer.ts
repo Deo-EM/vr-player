@@ -274,6 +274,15 @@ export class Renderer {
     this.canvas.width = Math.max(1, Math.floor(width * scale));
     this.canvas.height = Math.max(1, Math.floor(height * scale));
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+
+    // WebGL 规范：改变 canvas 尺寸会自动清空绘制缓冲区。
+    // 若等待下一个 rAF 才重绘，期间浏览器可能合成出一帧空白画面导致闪屏。
+    // 因此在 resize 后立即同步渲染一帧，消除黑屏闪烁。
+    try {
+      this.render();
+    } catch {
+      // 渲染异常时静默忽略，下一帧 rAF 会恢复
+    }
   }
 
   /** 注入视频纹理 */
