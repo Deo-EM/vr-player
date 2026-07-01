@@ -221,36 +221,6 @@ player.setRenderScale(1.5);
 
 > **极致清晰度推荐配置**：`webgl: 2` + `renderScale: 2`
 
-## 开发指南
-
-```bash
-# 安装依赖
-pnpm install
-
-# 运行测试
-pnpm test
-
-# 代码检查
-pnpm run lint
-
-# 构建
-pnpm run build
-
-# 运行调试页面（需要本地开发服务器，如 vite）
-npx vite demo
-```
-
-## 技术栈
-
-| 分类       | 选型      | 说明                           |
-| ---------- | --------- | ------------------------------ |
-| 构建       | Rolldown | 基于 Rust，ESM + CJS 双格式输出 |
-| 语言       | TypeScript (strict) | 类型安全              |
-| 代码检查/格式化 | Biome | 集成 lint + format            |
-| 测试       | Vitest    | 原生 TS/ESM 支持               |
-| 版本管理   | Changesets| 变更日志与发布管理              |
-| 渲染       | WebGL 1.0 / 2.0 | 纯 WebGL 双版本，无渲染框架依赖 |
-
 ## 开源协议
 
 [MIT](./LICENSE)
