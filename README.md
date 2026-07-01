@@ -6,7 +6,7 @@
 ## 特性
 
 - 🎥 支持 360° 全景视频播放（等距柱状投影）
-- 🖱️ 拖动旋转视角（水平/垂直），垂直视角限制在 ±85°
+- 🖱️ 拖动旋转视角（水平/垂直），垂直视角限制在 ±85°；移动端支持双指 pinch 缩放
 - 🔭 可配置 FOV 视野角度，范围 [30°, 120°]
 - 🎛️ 支持 WebGL 1.0 / 2.0 双版本，按需切换（2.0 启用 mipmap 三线性过滤，清晰度更高）
 - 🔍 **极致清晰度优化**：各向异性过滤、highp 着色器精度、高细分球体、超采样（renderScale）
@@ -86,6 +86,40 @@ const unsubscribe = player.onFovChange((fov) => {
 unsubscribe();
 ```
 
+#### `player.video`（只读 getter）
+
+底层 `<video>` 元素，直接暴露供开发者进行定制化二次开发。
+
+通过它可以自由实现播放控制（`play`/`pause`/`seek`/`currentTime`/`duration`）、监听媒体事件（`timeupdate`/`ended`/`error`/`loadedmetadata`）、调整音量与播放速率等，无需库方逐一封装。
+
+```ts
+const video = player.video;
+
+// 定制示例：监听播放进度
+video.addEventListener('timeupdate', () => {
+  console.log(`${video.currentTime} / ${video.duration}`);
+});
+
+// 定制示例：跳转到 30s
+video.currentTime = 30;
+
+// 定制示例：1.5 倍速播放
+video.playbackRate = 1.5;
+```
+
+> 注意：`src` 由 `load()` 统一管理，请勿直接修改 `video.src`。
+
+#### `player.getWebGLVersion(): 1 | 2`
+
+获取播放器实际使用的 WebGL 版本。当请求 `webgl: 2` 但环境不支持而自动降级时返回 `1`，调用方可据此感知降级并做相应处理。
+
+```ts
+const version = player.getWebGLVersion();
+if (version === 1) {
+  console.warn('当前环境不支持 WebGL 2.0，已降级到 1.0');
+}
+```
+
 #### `player.setRenderScale(scale: number): void`
 
 动态调整渲染缩放倍数，立即生效（无需重建播放器）。钳制到 [0.25, 4]。
@@ -109,7 +143,7 @@ player.setRenderScale(2);
 - **球体几何**：程序化生成（WebGL1 200×100 / WebGL2 512×256 分段，WebGL2 使用 Uint32 索引突破 65535 顶点限制），UV 翻转使纹理朝向内部。高细分度减少 UV 仿射插值与透视映射的误差，降低视角旋转时的纹理游走。
 - **视频纹理**：首帧通过 `texImage2D` 上传，后续帧通过 `texSubImage2D` 更新，以 `video.currentTime` + `requestVideoFrameCallback` 双重检测避免重复上传。WebGL 2.0 下额外启用 mipmap + 三线性过滤（`LINEAR_MIPMAP_LINEAR`）。
 - **相机**：Y 轴（yaw）+ X 轴（pitch）欧拉角控制，pitch 限制在 ±85° 防止翻转。
-- **交互**：Pointer Events 统一鼠标与触摸操作，通过 pointer capture 支持拖出元素仍可响应。
+- **交互**：Pointer Events 统一鼠标与触摸操作，通过 pointer capture 支持拖出元素仍可响应；移动端双指 pinch 缩放 FOV。
 - **WebGL 版本**：默认使用 WebGL 1.0（兼容性最广）；配置 `webgl: 2` 时启用 WebGL 2.0，支持 NPOT 纹理 mipmap 与三线性过滤，清晰度显著提升。若浏览器不支持 2.0 则自动降级。
 
 ## 清晰度优化

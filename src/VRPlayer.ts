@@ -166,6 +166,32 @@ export class VRPlayer {
     return this.camera.onFovChange(cb);
   }
 
+  /**
+   * 底层 `<video>` 元素，直接暴露给开发者进行定制化二次开发。
+   *
+   * 通过它可以自由实现播放控制（play/pause/seek/currentTime/duration）、
+   * 监听媒体事件（timeupdate/ended/error/loadedmetadata 等）、
+   * 调整音量、设置播放速率等任意需求，无需库方逐一封装。
+   *
+   * 注意：`src` 属性由 `load()` 管理，请勿直接修改；
+   * 销毁后访问将抛出异常。
+   */
+  get video(): HTMLVideoElement {
+    this.ensureAlive();
+    return this.videoTexture.video;
+  }
+
+  /**
+   * 获取播放器实际使用的 WebGL 版本。
+   *
+   * 当请求 `webgl: 2` 但环境不支持而降级到 1.0 时，返回 `1`，
+   * 调用方可据此感知降级并做相应处理（如提示用户或切换策略）。
+   */
+  getWebGLVersion(): 1 | 2 {
+    this.ensureAlive();
+    return this.renderer.webglVersion;
+  }
+
   /** 销毁播放器，释放全部资源 */
   destroy(): void {
     if (this.destroyed) return;

@@ -74,71 +74,102 @@ export class Renderer {
     this.canvas.style.display = 'block';
     container.appendChild(this.canvas);
 
-    // 获取 WebGL 上下文（含自动降级逻辑）
-    const { gl, version } = this.acquireContext(webglVersion);
-    this.gl = gl;
-    this.webglVersion = version;
+    // 局部变量跟踪已获取的 GL 上下文，供 catch 中清理使用
+    let gl: GLContext | null = null;
 
-    // 根据版本选择对应 Shader 源码，并按设备能力升级片段着色器精度
-    const precision = this.getMaxFragmentPrecision();
-    const fsBase = version === 2 ? FRAGMENT_SHADER_SOURCE_300 : FRAGMENT_SHADER_SOURCE;
-    const fsSource = fsBase.replace('precision mediump float;', `precision ${precision} float;`);
-    const vsSource = version === 2 ? VERTEX_SHADER_SOURCE_300 : VERTEX_SHADER_SOURCE;
+    try {
+      // 获取 WebGL 上下文（含自动降级逻辑）
+      const acquired = this.acquireContext(webglVersion);
+      gl = acquired.gl;
+      this.gl = acquired.gl;
+      this.webglVersion = acquired.version;
 
-    // 编译 shader program
-    this.program = this.createProgram(vsSource, fsSource);
-    gl.useProgram(this.program);
+      // 根据版本选择对应 Shader 源码，并按设备能力升级片段着色器精度
+      const precision = this.getMaxFragmentPrecision();
+      const fsBase = acquired.version === 2 ? FRAGMENT_SHADER_SOURCE_300 : FRAGMENT_SHADER_SOURCE;
+      const fsSource = fsBase.replace('precision mediump float;', `precision ${precision} float;`);
+      const vsSource = acquired.version === 2 ? VERTEX_SHADER_SOURCE_300 : VERTEX_SHADER_SOURCE;
 
-    // 获取 attribute locations（-1 表示未找到）
-    const positionLoc = gl.getAttribLocation(this.program, 'aPosition');
-    const uvLoc = gl.getAttribLocation(this.program, 'aUv');
-    if (positionLoc === -1 || uvLoc === -1) {
-      throw new Error('Renderer: missing required attribute location');
+      // 编译 shader program
+      this.program = this.createProgram(vsSource, fsSource);
+      acquired.gl.useProgram(this.program);
+
+      // 获取 attribute locations（-1 表示未找到）
+      const positionLoc = acquired.gl.getAttribLocation(this.program, 'aPosition');
+      const uvLoc = acquired.gl.getAttribLocation(this.program, 'aUv');
+      if (positionLoc === -1 || uvLoc === -1) {
+        throw new Error('Renderer: missing required attribute location');
+      }
+      this.positionLoc = positionLoc;
+      this.uvLoc = uvLoc;
+
+      // 获取 uniform locations（null 表示未找到；注意 0 是合法的 location 值，不能用 falsy 判断）
+      const projectionLoc = acquired.gl.getUniformLocation(this.program, 'uProjection');
+      const viewLoc = acquired.gl.getUniformLocation(this.program, 'uView');
+      const textureLoc = acquired.gl.getUniformLocation(this.program, 'uTexture');
+      if (projectionLoc === null || viewLoc === null || textureLoc === null) {
+        throw new Error('Renderer: missing required uniform location');
+      }
+      this.projectionLoc = projectionLoc;
+      this.viewLoc = viewLoc;
+      this.textureLoc = textureLoc;
+
+      // 创建球体几何：WebGL2 使用更高细分度 + Uint32 索引以减少 UV 仿射插值误差
+      if (acquired.version === 2) {
+        // 512x256 细分，配合 Uint32 索引突破 65535 顶点限制
+        this.geometry = new SphereGeometry(acquired.gl, 50, 512, 256, true);
+      } else {
+        this.geometry = new SphereGeometry(acquired.gl, 50, 200, 100, false);
+      }
+
+      // 启用深度测试与背面剔除（剔除球体外表面，因相机在内侧观察）
+      acquired.gl.enable(acquired.gl.DEPTH_TEST);
+      acquired.gl.enable(acquired.gl.CULL_FACE);
+      acquired.gl.cullFace(acquired.gl.FRONT);
+
+      // 初始 resize
+      this.resize();
+
+      // 监听容器尺寸变化
+      if (typeof ResizeObserver !== 'undefined') {
+        this.resizeObserver = new ResizeObserver(() => this.resize());
+        this.resizeObserver.observe(container);
+      }
+
+      // 监听 WebGL 上下文丢失：阻止默认行为以允许后续恢复，
+      // 丢失时暂停渲染循环，避免在失效上下文上产生 GL 错误刷屏
+      this.onContextLost = (e: Event) => {
+        e.preventDefault();
+        this.stop();
+        console.warn('[VRPlayer] WebGL context lost. Rendering paused.');
+      };
+      this.canvas.addEventListener('webglcontextlost', this.onContextLost);
+    } catch (e) {
+      // 构造失败时回滚已分配的资源，避免泄漏
+      // 字段在 try 块中赋值，catch 时可能尚未初始化，用类型断言安全访问
+      if (gl && !gl.isContextLost()) {
+        try {
+          const geometry = (this as unknown as { geometry?: SphereGeometry }).geometry;
+          geometry?.dispose(gl);
+        } catch {
+          // 忽略清理过程中的错误
+        }
+        try {
+          const program = (this as unknown as { program?: WebGLProgram }).program;
+          if (program) gl.deleteProgram(program);
+        } catch {
+          // 忽略清理过程中的错误
+        }
+      }
+      if (this.resizeObserver) {
+        this.resizeObserver.disconnect();
+        this.resizeObserver = null;
+      }
+      if (this.canvas.parentNode) {
+        this.canvas.parentNode.removeChild(this.canvas);
+      }
+      throw e;
     }
-    this.positionLoc = positionLoc;
-    this.uvLoc = uvLoc;
-
-    // 获取 uniform locations（null 表示未找到；注意 0 是合法的 location 值，不能用 falsy 判断）
-    const projectionLoc = gl.getUniformLocation(this.program, 'uProjection');
-    const viewLoc = gl.getUniformLocation(this.program, 'uView');
-    const textureLoc = gl.getUniformLocation(this.program, 'uTexture');
-    if (projectionLoc === null || viewLoc === null || textureLoc === null) {
-      throw new Error('Renderer: missing required uniform location');
-    }
-    this.projectionLoc = projectionLoc;
-    this.viewLoc = viewLoc;
-    this.textureLoc = textureLoc;
-
-    // 创建球体几何：WebGL2 使用更高细分度 + Uint32 索引以减少 UV 仿射插值误差
-    if (version === 2) {
-      // 512x256 细分，配合 Uint32 索引突破 65535 顶点限制
-      this.geometry = new SphereGeometry(gl, 50, 512, 256, true);
-    } else {
-      this.geometry = new SphereGeometry(gl, 50, 200, 100, false);
-    }
-
-    // 启用深度测试与背面剔除（剔除球体外表面，因相机在内侧观察）
-    gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.CULL_FACE);
-    gl.cullFace(gl.FRONT);
-
-    // 初始 resize
-    this.resize();
-
-    // 监听容器尺寸变化
-    if (typeof ResizeObserver !== 'undefined') {
-      this.resizeObserver = new ResizeObserver(() => this.resize());
-      this.resizeObserver.observe(container);
-    }
-
-    // 监听 WebGL 上下文丢失：阻止默认行为以允许后续恢复，
-    // 丢失时暂停渲染循环，避免在失效上下文上产生 GL 错误刷屏
-    this.onContextLost = (e: Event) => {
-      e.preventDefault();
-      this.stop();
-      console.warn('[VRPlayer] WebGL context lost. Rendering paused.');
-    };
-    this.canvas.addEventListener('webglcontextlost', this.onContextLost);
   }
 
   /**

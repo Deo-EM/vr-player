@@ -34,7 +34,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "demo": "vite demo",
+    "demo": "vite demo --host",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "changeset publish",
