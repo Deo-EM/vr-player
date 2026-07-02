@@ -36,6 +36,8 @@ export class VRPlayer {
   private gyroController: GyroscopeController;
   /** 是否已销毁 */
   private destroyed = false;
+  /** 正在 pending 的 load() 的清理函数（destroy 时调用以取消） */
+  private loadCleanup: (() => void) | null = null;
 
   constructor(options: VRPlayerOptions) {
     // 合并默认值
@@ -129,9 +131,15 @@ export class VRPlayer {
         window.clearTimeout(timeoutId);
         video.removeEventListener('loadeddata', onLoadedData);
         video.removeEventListener('error', onError);
+        this.loadCleanup = null;
       };
       video.addEventListener('loadeddata', onLoadedData);
       video.addEventListener('error', onError);
+      // destroy() 取消 pending load：清理定时器并静默 resolve（不抛错）
+      this.loadCleanup = () => {
+        cleanup();
+        resolve();
+      };
     });
   }
 
@@ -245,6 +253,11 @@ export class VRPlayer {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+
+    // 取消正在 pending 的 load()（清理超时定时器与事件监听，reject 其 Promise）
+    if (this.loadCleanup) {
+      this.loadCleanup();
+    }
 
     this.dragController.dispose();
     this.gyroController.dispose();
