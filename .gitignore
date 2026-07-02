@@ -38,3 +38,6 @@ scripts/*-key.pem
 
 # AI assistant
 .codebuddy/
+
+# test video
+testvr.mp4
