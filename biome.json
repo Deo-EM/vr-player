@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": ["dist", "node_modules", "*.md", "demo/vconsole.js", "scripts/*.pem"]
+    "ignore": ["dist", "node_modules", "*.md", "demo/public/vconsole.js", "scripts/*.pem"]
   },
   "formatter": {
     "enabled": true,

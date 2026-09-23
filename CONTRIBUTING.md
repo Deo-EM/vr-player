@@ -6,7 +6,7 @@ Thanks for your interest in contributing! This guide will help you get started.
 
 ```bash
 # Clone the repo
-git clone https://gitlab.vzan.com/front-end/vr-player.git
+git clone https://github.com/Deo-EM/vr-player.git
 cd vr-player
 
 # Install dependencies

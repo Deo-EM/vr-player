@@ -1,9 +1,13 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VR Player Demo</title>
+    <title>360° VR Player Demo</title>
+    <meta
+      name="description"
+      content="Live demo of vr-player — a lightweight 360° panoramic VR video player in pure WebGL, zero dependencies."
+    />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>" />
     <style>
       * {
@@ -99,15 +103,15 @@
   <body>
     <div id="player"></div>
     <div class="controls">
-      <input type="url" id="src" value="/testvr.mp4" placeholder="全景视频源 URL" />
-      <button id="load">加载</button>
-      <button id="play">播放</button>
-      <button id="pause">暂停</button>
+      <input type="url" id="src" placeholder="Panoramic video URL" />
+      <button id="load">Load</button>
+      <button id="play">Play</button>
+      <button id="pause">Pause</button>
       <div class="progress">
         <input type="range" id="seek" min="0" max="1000" step="1" value="0" />
         <span class="time" id="time">00:00 / 00:00</span>
       </div>
-      <button id="gyro">陀螺仪: 关</button>
+      <button id="gyro">Gyro: off</button>
       <label>
         FOV
         <input type="range" id="fov" min="30" max="120" step="1" value="75" />
@@ -121,12 +125,11 @@
         </select>
       </label>
       <label>
-        锐化
+        Sharpness
         <input type="range" id="renderScale" min="0.5" max="2" step="0.25" value="2" />
         <span class="fov-value" id="renderScaleValue">2.0x</span>
       </label>
     </div>
-    <script src="./vconsole.js"></script>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

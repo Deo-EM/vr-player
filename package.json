@@ -1,7 +1,7 @@
 {
   "name": "vr-player",
   "version": "0.1.10",
-  "description": "A lightweight 360° panoramic video VR player built with pure WebGL. Zero runtime dependencies.",
+  "description": "Lightweight 360° panoramic video VR player in pure WebGL. Zero runtime dependencies, ~6 KB gzipped.",
   "type": "module",
   "license": "MIT",
   "author": "",
@@ -13,7 +13,28 @@
   "bugs": {
     "url": "https://github.com/Deo-EM/vr-player/issues"
   },
-  "keywords": ["vr", "360", "panorama", "video", "webgl", "player"],
+  "keywords": [
+    "vr",
+    "360",
+    "360-video",
+    "360-video-player",
+    "panorama",
+    "panorama-viewer",
+    "panorama-video",
+    "equirectangular",
+    "vr-video",
+    "vr-video-player",
+    "video-player",
+    "html5-video",
+    "webgl",
+    "webgl2",
+    "gyroscope",
+    "deviceorientation",
+    "webxr",
+    "immersive",
+    "video-texture",
+    "zero-dependency"
+  ],
   "sideEffects": false,
   "exports": {
     ".": {
@@ -34,6 +55,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "demo": "vite demo --host",
+    "demo:build": "vite build demo",
+    "demo:preview": "vite preview demo --base=/vr-player/",
     "demo:https": "node scripts/serve-https.js",
     "gen-cert": "node scripts/gen-cert.js",
     "release:patch": "node scripts/release.js patch",

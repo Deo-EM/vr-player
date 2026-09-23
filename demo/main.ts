@@ -1,9 +1,14 @@
 import { VRPlayer } from '../src/index';
 
-// 接入 vConsole，方便手机端排查问题（console/network/存储等）
-const VConsoleCtor = (window as unknown as { VConsole?: new () => undefined }).VConsole;
-if (VConsoleCtor) {
-  new VConsoleCtor();
+// 仅在 URL 带 ?debug 时按需加载 vConsole，方便手机端排查问题（避免公共 Demo 多加载 200 KB）
+if (new URLSearchParams(window.location.search).has('debug')) {
+  const script = document.createElement('script');
+  script.src = `${import.meta.env.BASE_URL}vconsole.js`;
+  script.onload = () => {
+    const VConsoleCtor = (window as unknown as { VConsole?: new () => undefined }).VConsole;
+    if (VConsoleCtor) new VConsoleCtor();
+  };
+  document.head.appendChild(script);
 }
 
 /** 按 id + 标签名获取元素并断言类型，缺失或标签不符时抛错 */
@@ -16,6 +21,8 @@ function $<K extends keyof HTMLElementTagNameMap>(id: string, tag: K): HTMLEleme
 
 const container = $('player', 'div');
 const srcInput = $('src', 'input');
+// 默认视频源放在 public/ 下，随构建产物一起发布；BASE_URL 兼容 dev('/') 与 Pages('/vr-player/')
+srcInput.value = `${import.meta.env.BASE_URL}vr.mp4`;
 const loadBtn = $('load', 'button');
 const playBtn = $('play', 'button');
 const pauseBtn = $('pause', 'button');
@@ -86,17 +93,17 @@ createPlayer(Number.parseInt(webglSelect.value, 10) as 1 | 2);
 loadBtn.addEventListener('click', async () => {
   const src = srcInput.value.trim();
   if (!src) {
-    alert('请输入视频源 URL');
+    alert('Please enter a video URL');
     return;
   }
   currentSrc = src;
   try {
     await player.load(src);
     await player.play();
-    console.log('视频加载完成');
+    console.log('Video loaded');
   } catch (e) {
-    console.error('加载失败:', e);
-    alert(`加载失败: ${e instanceof Error ? e.message : String(e)}`);
+    console.error('Load failed:', e);
+    alert(`Load failed: ${e instanceof Error ? e.message : String(e)}`);
   }
 });
 
@@ -104,7 +111,7 @@ playBtn.addEventListener('click', async () => {
   try {
     await player.play();
   } catch (e) {
-    console.error('播放失败:', e);
+    console.error('Play failed:', e);
   }
 });
 
@@ -117,11 +124,11 @@ gyroBtn.addEventListener('click', async () => {
   const target = !player.isGyroscopeEnabled();
   const ok = await player.setGyroscope(target);
   if (target && !ok) {
-    alert('陀螺仪开启失败（设备不支持或权限被拒绝）');
-    gyroBtn.textContent = '陀螺仪: 关';
+    alert('Failed to enable gyroscope (unsupported device or permission denied)');
+    gyroBtn.textContent = 'Gyro: off';
     return;
   }
-  gyroBtn.textContent = `陀螺仪: ${player.isGyroscopeEnabled() ? '开' : '关'}`;
+  gyroBtn.textContent = `Gyro: ${player.isGyroscopeEnabled() ? 'on' : 'off'}`;
 });
 
 fovSlider.addEventListener('input', () => {
@@ -143,9 +150,9 @@ webglSelect.addEventListener('change', async () => {
     try {
       await player.load(currentSrc);
       await player.play();
-      console.log(`已切换到 WebGL ${version} 并重新加载视频`);
+      console.log(`Switched to WebGL ${version} and reloaded video`);
     } catch (e) {
-      console.error('切换后重新加载失败:', e);
+      console.error('Reload after switch failed:', e);
     }
   }
 });
