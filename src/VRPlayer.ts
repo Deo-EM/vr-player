@@ -261,7 +261,8 @@ export class VRPlayer {
 
     this.dragController.dispose();
     this.gyroController.dispose();
-    this.videoTexture.dispose(this.renderer.gl);
+    // 上下文丢失后纹理已失效，传 null 跳过 deleteTexture
+    this.videoTexture.dispose(this.renderer.isContextLost ? null : this.renderer.gl);
     this.renderer.dispose();
   }
 

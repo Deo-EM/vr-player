@@ -55,10 +55,22 @@ export class Renderer {
   private rafId = 0;
   /** 是否正在渲染 */
   private running = false;
+  /**
+   * WebGL 上下文是否曾丢失。
+   * 丢失后 program / geometry 等 GL 对象全部失效，再对其调用 delete 会产生
+   * INVALID_OPERATION 警告（上下文恢复后 gl.isContextLost() 返回 false，
+   * 无法用它判断，因此必须单独记录）。
+   */
+  private contextLost = false;
   /** ResizeObserver */
   private resizeObserver: ResizeObserver | null = null;
   /** webglcontextlost 事件处理器引用（用于 dispose 时移除） */
   private readonly onContextLost: (e: Event) => void;
+
+  /** 上下文是否曾丢失（供上层决定是否跳过 GL 资源释放） */
+  get isContextLost(): boolean {
+    return this.contextLost;
+  }
 
   /**
    * @param container     挂载容器，canvas 将插入其中
@@ -148,8 +160,11 @@ export class Renderer {
       // 丢失时暂停渲染循环，避免在失效上下文上产生 GL 错误刷屏
       this.onContextLost = (e: Event) => {
         e.preventDefault();
+        this.contextLost = true;
         this.stop();
-        console.warn('[VRPlayer] WebGL context lost. Rendering paused.');
+        console.warn(
+          '[VRPlayer] WebGL context lost. Rendering paused — call destroy() and create a new player to recover.',
+        );
       };
       this.canvas.addEventListener('webglcontextlost', this.onContextLost);
     } catch (e) {
@@ -379,8 +394,12 @@ export class Renderer {
       this.resizeObserver = null;
     }
     const gl = this.gl;
-    this.geometry.dispose(gl);
-    gl.deleteProgram(this.program);
+    // 上下文丢失后这些对象已失效，delete 会报 INVALID_OPERATION；
+    // 它们会随上下文一起被浏览器回收，直接跳过即可。
+    if (!this.contextLost) {
+      this.geometry.dispose(gl);
+      gl.deleteProgram(this.program);
+    }
     if (this.canvas.parentNode) {
       this.canvas.parentNode.removeChild(this.canvas);
     }

@@ -265,10 +265,16 @@ export class VideoTexture {
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
   }
 
-  /** 释放全部资源 */
-  dispose(gl: GLContext): void {
+  /**
+   * 释放全部资源。
+   * @param gl 上下文；传 null 表示上下文已丢失，纹理对象随之失效，
+   *           此时跳过 deleteTexture 以避免 INVALID_OPERATION 警告
+   */
+  dispose(gl: GLContext | null): void {
     this.cancelVFC();
-    gl.deleteTexture(this.texture);
+    if (gl) {
+      gl.deleteTexture(this.texture);
+    }
     this.video.pause();
     this.video.removeAttribute('src');
     this.video.load();

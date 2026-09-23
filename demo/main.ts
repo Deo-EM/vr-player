@@ -51,6 +51,22 @@ function formatTime(sec: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+/** 上下文恢复后重建播放器，并重新加载当前视频源 */
+function rebuildPlayer(): void {
+  const version = Number.parseInt(webglSelect.value, 10) as 1 | 2;
+  const src = currentSrc || `${import.meta.env.BASE_URL}vr.mp4`;
+
+  player.destroy();
+  seeking = false;
+  seekSlider.value = '0';
+  createPlayer(version);
+
+  player
+    .load(src)
+    .then(() => player.play())
+    .catch((e) => console.error('Reload after context restore failed:', e));
+}
+
 /** 根据版本创建播放器实例 */
 function createPlayer(webglVersion: 1 | 2): void {
   const renderScale = Number.parseFloat(renderScaleSlider.value);
@@ -72,6 +88,20 @@ function createPlayer(webglVersion: 1 | 2): void {
   // 调试时暴露 player 到全局，方便控制台查看
   (window as unknown as { player: typeof player }).player = player;
 
+  // WebGL 上下文丢失时库内部只会 console.warn 并停止渲染循环，不会自行恢复，
+  // 表现就是「黑屏且控制台没有报错」。这里在恢复事件里重建播放器实现自愈：
+  // 上下文丢失后 program / geometry / texture 全部失效，只能整体重建。
+  const canvasEl = container.querySelector('canvas');
+  if (canvasEl) {
+    canvasEl.addEventListener('webglcontextlost', () => {
+      console.warn('[demo] WebGL context lost. Waiting for the browser to restore it…');
+    });
+    canvasEl.addEventListener('webglcontextrestored', () => {
+      console.warn('[demo] WebGL context restored. Rebuilding the player…');
+      rebuildPlayer();
+    });
+  }
+
   // 视频元数据就绪：设置总时长显示
   const video = player.video;
   video.addEventListener('loadedmetadata', () => {
@@ -90,6 +120,27 @@ function createPlayer(webglVersion: 1 | 2): void {
 
 createPlayer(Number.parseInt(webglSelect.value, 10) as 1 | 2);
 
+/**
+ * 首次打开自动加载示例视频。
+ * 直接落在页面上的访客若只看到纯黑，会以为 Demo 坏了——实测这正是
+ * README 链接过来的第一印象。浏览器只允许「静音自动播放」，
+ * 因此这次自动播放临时静音；用户手动点 Load 时恢复有声播放。
+ */
+async function autoLoadSample(): Promise<void> {
+  const src = `${import.meta.env.BASE_URL}vr.mp4`;
+  currentSrc = src;
+  try {
+    player.video.muted = true;
+    await player.load(src);
+    await player.play();
+    console.log('Sample video autoloaded');
+  } catch {
+    // 自动加载或自动播放被拦截时不打扰用户：首帧通常已渲染，手动点 Load 即可
+  }
+}
+
+void autoLoadSample();
+
 loadBtn.addEventListener('click', async () => {
   const src = srcInput.value.trim();
   if (!src) {
@@ -97,6 +148,7 @@ loadBtn.addEventListener('click', async () => {
     return;
   }
   currentSrc = src;
+  player.video.muted = false; // 手动加载恢复有声播放
   try {
     await player.load(src);
     await player.play();
