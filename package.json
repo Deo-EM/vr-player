@@ -1,6 +1,6 @@
 {
   "name": "vr-player",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Lightweight 360° panoramic video VR player in pure WebGL. Zero runtime dependencies, ~6 KB gzipped.",
   "type": "module",
   "license": "MIT",
